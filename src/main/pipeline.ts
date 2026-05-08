@@ -15,6 +15,8 @@ const MAX_LOG_LINES = 500
 
 type Listener = (job: Job) => void
 
+const LOG_EMIT_DEBOUNCE_MS = 100
+
 export class Pipeline {
   private jobs = new Map<string, Job>()
   private procs = new Map<string, ChildProcess>()
@@ -22,6 +24,7 @@ export class Pipeline {
   private transcribeSem: Semaphore
   private listeners = new Set<Listener>()
   private settings: PipelineSettings
+  private logEmitTimers = new Map<string, NodeJS.Timeout>()
 
   constructor(settings: PipelineSettings) {
     this.settings = settings
@@ -48,12 +51,40 @@ export class Pipeline {
     for (const j of jobs) {
       if (j.status === 'converting' || j.status === 'transcribing') continue
       if (j.status === 'queued') continue
-      this.jobs.set(j.id, {
+      const restored: Job = {
         ...j,
         log: Array.isArray(j.log) ? j.log.slice(-100) : []
-      })
+      }
+      this.jobs.set(j.id, restored)
+      void this.validateRestoredJob(j.id)
     }
     for (const j of this.jobs.values()) this.emit(j)
+  }
+
+  private async validateRestoredJob(id: string): Promise<void> {
+    const job = this.jobs.get(id)
+    if (!job) return
+    const missing: string[] = []
+    try {
+      await fs.access(job.inputPath)
+    } catch {
+      missing.push(`元動画 (${job.inputPath})`)
+    }
+    if (job.outputPath) {
+      try {
+        await fs.access(job.outputPath)
+      } catch {
+        missing.push(`SRT (${job.outputPath})`)
+      }
+    }
+    if (missing.length > 0) {
+      this.appendLog(id, `[restore] ファイルが見つかりません: ${missing.join(', ')}`)
+      this.update(id, {
+        status: 'error',
+        error: `復元時にファイル欠落: ${missing.join(', ')}`,
+        finishedAt: job.finishedAt ?? Date.now()
+      })
+    }
   }
 
   add(inputPath: string, outputDir: string, extraPrompt?: string): Job {
@@ -74,6 +105,42 @@ export class Pipeline {
     if (!job) return
     job.extraPrompt = text || undefined
     this.emit(job)
+  }
+
+  async rerunEmbed(id: string): Promise<void> {
+    const job = this.jobs.get(id)
+    if (!job) throw new Error('job not found')
+    if (!job.outputPath) throw new Error('base SRT not yet generated for this job')
+    if (job.status === 'converting' || job.status === 'transcribing') {
+      throw new Error('job is currently running')
+    }
+
+    this.update(id, {
+      status: 'transcribing',
+      phase: 'embed',
+      progress: 0,
+      error: undefined,
+      finishedAt: undefined
+    })
+
+    const release = await this.convertSem.acquire()
+    try {
+      await this.runEmbedSubtitles(id, job.inputPath, job.outputPath, job.outputDir)
+      this.update(id, {
+        status: 'done',
+        phase: 'done',
+        progress: 100,
+        finishedAt: Date.now()
+      })
+    } catch (e) {
+      this.update(id, {
+        status: 'error',
+        error: errMsg(e),
+        finishedAt: Date.now()
+      })
+    } finally {
+      release()
+    }
   }
 
   async rerunFromLlm(id: string): Promise<void> {
@@ -168,6 +235,7 @@ export class Pipeline {
     const j = this.jobs.get(id)
     if (!j) return
     Object.assign(j, patch)
+    this.flushLogEmit(id)
     this.emit(j)
   }
 
@@ -176,7 +244,25 @@ export class Pipeline {
     if (!j) return
     j.log.push(line)
     if (j.log.length > MAX_LOG_LINES) j.log.splice(0, j.log.length - MAX_LOG_LINES)
-    this.emit(j)
+    this.scheduleLogEmit(id)
+  }
+
+  private scheduleLogEmit(id: string): void {
+    if (this.logEmitTimers.has(id)) return
+    const t = setTimeout(() => {
+      this.logEmitTimers.delete(id)
+      const job = this.jobs.get(id)
+      if (job) this.emit(job)
+    }, LOG_EMIT_DEBOUNCE_MS)
+    this.logEmitTimers.set(id, t)
+  }
+
+  private flushLogEmit(id: string): void {
+    const t = this.logEmitTimers.get(id)
+    if (t) {
+      clearTimeout(t)
+      this.logEmitTimers.delete(id)
+    }
   }
 
   private async run(id: string): Promise<void> {

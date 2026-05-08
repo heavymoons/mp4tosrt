@@ -45,12 +45,18 @@ function JobItem({
   const [showLog, setShowLog] = useState(false)
   const [showPrompt, setShowPrompt] = useState<boolean>(Boolean(job.extraPrompt) || isAwaiting)
   const [promptDraft, setPromptDraft] = useState<string>(job.extraPrompt ?? '')
+  const [composingPrompt, setComposingPrompt] = useState(false)
+  const [focusedPrompt, setFocusedPrompt] = useState(false)
   const [rerunning, setRerunning] = useState(false)
+  const [embedding, setEmbedding] = useState(false)
   const [rerunError, setRerunError] = useState<string | null>(null)
 
   useEffect(() => {
-    setPromptDraft(job.extraPrompt ?? '')
-  }, [job.extraPrompt])
+    // 編集中は外部の job.extraPrompt の更新で上書きしない
+    if (!composingPrompt && !focusedPrompt) {
+      setPromptDraft(job.extraPrompt ?? '')
+    }
+  }, [job.extraPrompt, composingPrompt, focusedPrompt])
 
   useEffect(() => {
     if (isAwaiting) setShowPrompt(true)
@@ -68,6 +74,25 @@ function JobItem({
   const savePrompt = (): void => {
     if (promptDraft !== (job.extraPrompt ?? '')) {
       void window.api.setJobExtraPrompt(job.id, promptDraft)
+    }
+  }
+
+  const rerunEmbed = async (): Promise<void> => {
+    if (embedding) return
+    setRerunError(null)
+    if (typeof window.api.rerunJobEmbed !== 'function') {
+      setRerunError(
+        'window.api.rerunJobEmbed が見つかりません。preload が古いため、アプリを再起動してください。'
+      )
+      return
+    }
+    setEmbedding(true)
+    try {
+      await window.api.rerunJobEmbed(job.id)
+    } catch (e) {
+      setRerunError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setEmbedding(false)
     }
   }
 
@@ -116,6 +141,20 @@ function JobItem({
               SRT を表示
             </button>
           )}
+          {hasBaseSrt && (canRerun || embedding) && (
+            <button
+              className="ghost small"
+              onClick={() => void rerunEmbed()}
+              disabled={embedding || !canRerun}
+              title={
+                '.corrected.srt（無ければ .srt）を外部エディタで手直ししてからこのボタンを押すと、\n' +
+                'その内容を反映した .subbed.mp4 を再生成します。\n' +
+                '元動画・元 SRT は触りません。'
+              }
+            >
+              {embedding ? 'MP4 出力中…' : 'MP4 へ字幕埋め込み'}
+            </button>
+          )}
           <button className="ghost small" onClick={() => setShowPrompt(s => !s)}>
             {job.extraPrompt ? '✎ 追加プロンプト' : '+ 追加プロンプト'}
           </button>
@@ -143,7 +182,13 @@ function JobItem({
             rows={2}
             value={promptDraft}
             onChange={e => setPromptDraft(e.target.value)}
-            onBlur={savePrompt}
+            onCompositionStart={() => setComposingPrompt(true)}
+            onCompositionEnd={() => setComposingPrompt(false)}
+            onFocus={() => setFocusedPrompt(true)}
+            onBlur={() => {
+              setFocusedPrompt(false)
+              savePrompt()
+            }}
             placeholder="例: 〇〇による政治系ライブの書き起こし。日本の政治家・地名が頻出。フォーマルな文体で校正"
           />
           <div className="job-prompt-actions">

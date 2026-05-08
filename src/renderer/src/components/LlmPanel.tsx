@@ -29,6 +29,9 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
   const [progress, setProgress] = useState<LlmDownloadProgress | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sharedDraft, setSharedDraft] = useState<string>(settings.llm.sharedPrompt ?? '')
+  const [composingShared, setComposingShared] = useState(false)
+  const [focusedShared, setFocusedShared] = useState(false)
 
   const refreshStatus = async (modelId: string): Promise<void> => {
     const s = await window.api.llmStatus(modelId)
@@ -38,6 +41,14 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
   useEffect(() => {
     void window.api.llmListPresets().then(setPresets)
   }, [])
+
+  useEffect(() => {
+    // 編集中（フォーカス中 or IME変換中）は settings 側の値で上書きしない。
+    // フォーカスが外れて確定された後にだけ外部更新を反映する。
+    if (!composingShared && !focusedShared) {
+      setSharedDraft(settings.llm.sharedPrompt ?? '')
+    }
+  }, [settings.llm.sharedPrompt, composingShared, focusedShared])
 
   useEffect(() => {
     void refreshStatus(settings.llm.modelId)
@@ -116,8 +127,17 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
           共通プロンプト（全ジョブ共通で LLM に渡される / 任意）
           <textarea
             rows={3}
-            value={settings.llm.sharedPrompt ?? ''}
-            onChange={e => setLlm({ sharedPrompt: e.target.value })}
+            value={sharedDraft}
+            onChange={e => setSharedDraft(e.target.value)}
+            onCompositionStart={() => setComposingShared(true)}
+            onCompositionEnd={() => setComposingShared(false)}
+            onFocus={() => setFocusedShared(true)}
+            onBlur={() => {
+              setFocusedShared(false)
+              if (sharedDraft !== (settings.llm.sharedPrompt ?? '')) {
+                setLlm({ sharedPrompt: sharedDraft })
+              }
+            }}
             placeholder="例: 自分のYouTubeチャンネル「heavymoons」の動画です。日本語の固有名詞や軍事/政治用語が頻出します。"
             disabled={!settings.llm.enabled}
             style={{

@@ -51,13 +51,6 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   let settings: PipelineSettings = mergeSettings(DEFAULT_SETTINGS, stored)
   const pipeline = new Pipeline(settings)
 
-  const persist = async (): Promise<void> => {
-    try {
-      await writePersistedSettings(settings)
-    } catch (e) {
-      console.error('failed to persist settings', e)
-    }
-  }
 
   let jobsSaveTimer: NodeJS.Timeout | undefined
   const scheduleJobsSave = (): void => {
@@ -72,6 +65,17 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
         console.error('failed to persist jobs', err)
       )
     }, 800)
+  }
+
+  let settingsSaveTimer: NodeJS.Timeout | undefined
+  const scheduleSettingsSave = (): void => {
+    if (settingsSaveTimer) clearTimeout(settingsSaveTimer)
+    settingsSaveTimer = setTimeout(() => {
+      settingsSaveTimer = undefined
+      writePersistedSettings(settings).catch(err =>
+        console.error('failed to persist settings', err)
+      )
+    }, 500)
   }
 
   const storedJobs = await readPersistedJobs<Job>()
@@ -142,6 +146,10 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
     await pipeline.rerunFromLlm(id)
   })
 
+  ipcMain.handle('jobs:rerunEmbed', async (_e, id: string) => {
+    await pipeline.rerunEmbed(id)
+  })
+
   ipcMain.handle('jobs:cancel', (_e, id: string) => {
     pipeline.cancel(id)
   })
@@ -161,9 +169,13 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   ipcMain.handle('settings:get', (): PipelineSettings => settings)
 
   ipcMain.handle('settings:set', async (_e, next: Partial<PipelineSettings>): Promise<PipelineSettings> => {
+    const prev = settings
     settings = mergeSettings(settings, next)
     pipeline.updateSettings(settings)
-    await persist()
+    if (prev.llm.enabled && !settings.llm.enabled) {
+      try { await unloadModel() } catch { /* ignore */ }
+    }
+    scheduleSettingsSave()
     return settings
   })
 

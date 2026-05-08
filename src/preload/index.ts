@@ -19,6 +19,8 @@ const api = {
     ipcRenderer.invoke('jobs:setExtraPrompt', id, text),
   rerunJobFromLlm: (id: string): Promise<void> =>
     ipcRenderer.invoke('jobs:rerunFromLlm', id),
+  rerunJobEmbed: (id: string): Promise<void> =>
+    ipcRenderer.invoke('jobs:rerunEmbed', id),
   cancelJob: (id: string): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   removeJob: (id: string): Promise<void> => ipcRenderer.invoke('jobs:remove', id),
   clearFinished: (): Promise<void> => ipcRenderer.invoke('jobs:clearFinished'),
