@@ -1,9 +1,23 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, protocol, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 import { ensurePathEnv } from './tools'
 
 ensurePathEnv()
+
+// 動画プレビュー用の独自スキーム。app.ready 前に privileged 登録が必要。
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'mp4tosrt-video',
+    privileges: {
+      bypassCSP: true,
+      stream: true,
+      supportFetchAPI: true,
+      standard: true,
+      secure: true
+    }
+  }
+])
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({

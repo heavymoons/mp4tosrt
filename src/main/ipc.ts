@@ -29,6 +29,7 @@ import {
   isPathAllowed,
   type UserFileKind
 } from './userFiles'
+import { registerVideoProtocol } from './preview'
 
 const DEFAULT_SETTINGS: PipelineSettings = {
   model: 'mlx-community/whisper-large-v3-turbo',
@@ -67,6 +68,7 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   if (settings.replaceDictPath) registerDialogPath(settings.replaceDictPath)
   if (settings.hallucinationsListPath) registerDialogPath(settings.hallucinationsListPath)
   const pipeline = new Pipeline(settings)
+  registerVideoProtocol(pipeline)
 
 
   let jobsSaveTimer: NodeJS.Timeout | undefined

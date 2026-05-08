@@ -48,6 +48,10 @@ export class Pipeline {
     return [...this.jobs.values()]
   }
 
+  getJob(id: string): Job | undefined {
+    return this.jobs.get(id)
+  }
+
   restoreJobs(jobs: Job[]): void {
     for (const j of jobs) {
       if (j.status === 'converting' || j.status === 'transcribing') continue

@@ -398,6 +398,15 @@ button:disabled {
   font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   word-break: break-all;
 }
+.job-preview-video {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: #000;
+  display: block;
+}
+
 .job-prompt {
   margin-top: 8px;
   padding: 10px;

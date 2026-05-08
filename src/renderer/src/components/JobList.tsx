@@ -43,6 +43,7 @@ function JobItem({
 }): JSX.Element {
   const isAwaiting = job.status === 'awaiting'
   const [showLog, setShowLog] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [showPrompt, setShowPrompt] = useState<boolean>(Boolean(job.extraPrompt) || isAwaiting)
   const [promptDraft, setPromptDraft] = useState<string>(job.extraPrompt ?? '')
   const [composingPrompt, setComposingPrompt] = useState(false)
@@ -136,6 +137,13 @@ function JobItem({
           {t && <span className="muted small">{t}</span>}
         </div>
         <div className="job-actions">
+          <button
+            className="ghost small"
+            onClick={() => setShowPreview(s => !s)}
+            title="動画をインラインプレビュー"
+          >
+            {showPreview ? '▾ プレビュー' : '▸ プレビュー'}
+          </button>
           {job.outputPath && (
             <button className="ghost small" onClick={() => onReveal(job.outputPath!)}>
               SRT を表示
@@ -175,6 +183,14 @@ function JobItem({
       <div className="job-progress">
         <div className="bar" style={{ width: `${job.progress}%` }} />
       </div>
+      {showPreview && (
+        <video
+          className="job-preview-video"
+          controls
+          preload="metadata"
+          src={`mp4tosrt-video://job/${encodeURIComponent(job.id)}`}
+        />
+      )}
       {job.error && <div className="job-error">{job.error}</div>}
       {showPrompt && (
         <div className="job-prompt">
