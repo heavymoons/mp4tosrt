@@ -1,6 +1,5 @@
 import { protocol } from 'electron'
 import { promises as fs, createReadStream } from 'fs'
-import { Readable } from 'stream'
 import { extname } from 'path'
 import type { Pipeline } from './pipeline'
 
@@ -30,22 +29,27 @@ function mimeFor(path: string): string {
   return MIME_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream'
 }
 
+async function readChunk(filePath: string, start: number, end: number): Promise<Buffer> {
+  return await new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    const stream = createReadStream(filePath, { start, end })
+    stream.on('data', chunk => chunks.push(chunk as Buffer))
+    stream.on('end', () => resolve(Buffer.concat(chunks)))
+    stream.on('error', reject)
+  })
+}
+
 /**
  * mp4tosrt-video://job/<jobId> 形式の URL を受け取り、ジョブの inputPath
- * を Range リクエスト対応で配信する。HTML5 <video> の seek / streaming に
- * 対応するため、fs.createReadStream + 手動 Range ヘッダ処理を使用。
+ * を Range リクエスト対応で配信する。Range で要求された範囲を Buffer に
+ * 読み込んで一括レスポンスする実装。Web Stream への変換を経ないので
+ * packaged 環境での互換性が高い。
  */
 export function registerVideoProtocol(pipeline: Pipeline): void {
   protocol.handle(VIDEO_SCHEME, async request => {
     try {
       const url = new URL(request.url)
-      // pathname は host を含まないので、host 部分にあたる "job" を捨てて
-      // url.pathname だけ使う場合は注意。今は host=job を前提とせず、
-      // hostname または pathname に jobId が入る両ケースを許容する。
       let jobId = ''
-      // url.host は scheme://HOST/path の HOST 部分
-      // mp4tosrt-video://job/<id> の場合、host="job", pathname="/<id>"
-      // mp4tosrt-video://<id> の場合、host="<id>", pathname="/" or ""
       if (url.pathname && url.pathname !== '/') {
         jobId = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
       } else if (url.host) {
@@ -68,46 +72,43 @@ export function registerVideoProtocol(pipeline: Pipeline): void {
       const stat = await fs.stat(filePath)
       const total = stat.size
       const mimeType = mimeFor(filePath)
-      console.log(`[video protocol] serving ${filePath} (${total} bytes, ${mimeType})`)
 
       const rangeHeader = request.headers.get('range')
+      let start = 0
+      let end = total - 1
+      let status = 200
+      const headers: Record<string, string> = {
+        'Content-Type': mimeType,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-cache',
+        'Access-Control-Allow-Origin': '*'
+      }
+
       if (rangeHeader) {
         const match = rangeHeader.match(/bytes=(\d+)-(\d*)/)
         if (match) {
-          const start = parseInt(match[1]!, 10)
-          const end = match[2] ? parseInt(match[2], 10) : total - 1
+          start = parseInt(match[1]!, 10)
+          end = match[2] ? parseInt(match[2], 10) : total - 1
           if (start >= total || end >= total || start > end) {
             return new Response(null, {
               status: 416,
               headers: { 'Content-Range': `bytes */${total}` }
             })
           }
-          const length = end - start + 1
-          const stream = createReadStream(filePath, { start, end })
-          return new Response(Readable.toWeb(stream) as ReadableStream, {
-            status: 206,
-            headers: {
-              'Content-Type': mimeType,
-              'Content-Length': String(length),
-              'Content-Range': `bytes ${start}-${end}/${total}`,
-              'Accept-Ranges': 'bytes',
-              'Cache-Control': 'no-cache',
-            'Access-Control-Allow-Origin': '*'
-            }
-          })
+          status = 206
+          headers['Content-Range'] = `bytes ${start}-${end}/${total}`
         }
       }
 
-      const stream = createReadStream(filePath)
-      return new Response(Readable.toWeb(stream) as ReadableStream, {
-        status: 200,
-        headers: {
-          'Content-Type': mimeType,
-          'Content-Length': String(total),
-          'Accept-Ranges': 'bytes',
-          'Cache-Control': 'no-cache'
-        }
-      })
+      const length = end - start + 1
+      headers['Content-Length'] = String(length)
+
+      console.log(
+        `[video protocol] serving ${filePath} (${mimeType}, ${start}-${end}/${total}, status ${status})`
+      )
+
+      const buffer = await readChunk(filePath, start, end)
+      return new Response(buffer, { status, headers })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[video protocol]', msg)

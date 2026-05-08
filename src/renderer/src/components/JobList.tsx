@@ -44,6 +44,7 @@ function JobItem({
   const isAwaiting = job.status === 'awaiting'
   const [showLog, setShowLog] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const [showPrompt, setShowPrompt] = useState<boolean>(Boolean(job.extraPrompt) || isAwaiting)
   const [promptDraft, setPromptDraft] = useState<string>(job.extraPrompt ?? '')
   const [composingPrompt, setComposingPrompt] = useState(false)
@@ -139,10 +140,20 @@ function JobItem({
         <div className="job-actions">
           <button
             className="ghost small"
-            onClick={() => setShowPreview(s => !s)}
+            onClick={() => {
+              setShowPreview(s => !s)
+              setPreviewError(null)
+            }}
             title="動画をインラインプレビュー"
           >
             {showPreview ? '▾ プレビュー' : '▸ プレビュー'}
+          </button>
+          <button
+            className="ghost small"
+            onClick={() => onReveal(job.inputPath)}
+            title="元動画を Finder で表示（QuickTime 等で開ける）"
+          >
+            元動画を表示
           </button>
           {job.outputPath && (
             <button className="ghost small" onClick={() => onReveal(job.outputPath!)}>
@@ -184,13 +195,31 @@ function JobItem({
         <div className="bar" style={{ width: `${job.progress}%` }} />
       </div>
       {showPreview && (
-        <video
-          className="job-preview-video"
-          controls
-          preload="metadata"
-          crossOrigin="anonymous"
-          src={`mp4tosrt-video://job/${encodeURIComponent(job.id)}`}
-        />
+        <div className="job-preview-wrap">
+          <video
+            className="job-preview-video"
+            controls
+            preload="metadata"
+            crossOrigin="anonymous"
+            src={`mp4tosrt-video://job/${encodeURIComponent(job.id)}`}
+            onError={e => {
+              const err = (e.currentTarget as HTMLVideoElement).error
+              const code = err?.code
+              const msg = err?.message
+              const codeName = ({
+                1: 'MEDIA_ERR_ABORTED',
+                2: 'MEDIA_ERR_NETWORK',
+                3: 'MEDIA_ERR_DECODE',
+                4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+              } as Record<number, string>)[code ?? 0] ?? 'unknown'
+              setPreviewError(
+                `動画の読み込みに失敗しました (${codeName}): ${msg ?? 'no details'}\n` +
+                  '「元動画を表示」ボタンから外部プレイヤーで再生できます。'
+              )
+            }}
+          />
+          {previewError && <pre className="job-error">{previewError}</pre>}
+        </div>
       )}
       {job.error && <div className="job-error">{job.error}</div>}
       {showPrompt && (
