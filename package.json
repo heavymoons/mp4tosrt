@@ -1,6 +1,6 @@
 {
   "name": "mp4tosrt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "動画ファイル → SRT 字幕の Electron GUI (ffmpeg + mlx-whisper + ローカルLLM校正)",
   "homepage": "https://github.com/heavymoons/mp4tosrt",
