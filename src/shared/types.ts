@@ -61,6 +61,8 @@ export type Settings = {
   replaceDictPath?: string
   outputDir?: string
   embedSubtitles: boolean
+  suppressHallucinations: boolean
+  hallucinationsListPath?: string
   llm: LlmSettings
 }
 

@@ -13,6 +13,14 @@ const api = {
   openFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
   openDir: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDir'),
   openDictFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDictFile'),
+  openHallucinationsFile: (): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:openHallucinationsFile'),
+  userFileDefaultPath: (kind: 'dict' | 'hallucinations'): Promise<string> =>
+    ipcRenderer.invoke('userFile:defaultPath', kind),
+  readUserFile: (path: string): Promise<string> =>
+    ipcRenderer.invoke('userFile:read', path),
+  writeUserFile: (path: string, content: string): Promise<void> =>
+    ipcRenderer.invoke('userFile:write', path, content),
   addJob: (inputPath: string, outputDir: string, extraPrompt?: string): Promise<Job> =>
     ipcRenderer.invoke('jobs:add', inputPath, outputDir, extraPrompt),
   setJobExtraPrompt: (id: string, text: string): Promise<void> =>

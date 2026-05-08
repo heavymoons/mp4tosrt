@@ -20,6 +20,15 @@ import {
   readPersistedJobs,
   writePersistedJobs
 } from './store'
+import {
+  ensureAllDefaultFiles,
+  defaultFilePath,
+  readUserFile,
+  writeUserFile,
+  registerDialogPath,
+  isPathAllowed,
+  type UserFileKind
+} from './userFiles'
 
 const DEFAULT_SETTINGS: PipelineSettings = {
   model: 'mlx-community/whisper-large-v3-turbo',
@@ -35,6 +44,7 @@ const DEFAULT_SETTINGS: PipelineSettings = {
   noSpeechThreshold: 0.3,
   logprobThreshold: -1.5,
   embedSubtitles: false,
+  suppressHallucinations: true,
   llm: {
     enabled: false,
     modelId: 'qwen3.5-4b-q4',
@@ -47,8 +57,15 @@ const DEFAULT_SETTINGS: PipelineSettings = {
 }
 
 export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
+  await ensureAllDefaultFiles()
   const stored = (await readPersistedSettings<PipelineSettings>()) ?? {}
   let settings: PipelineSettings = mergeSettings(DEFAULT_SETTINGS, stored)
+  // 初回起動 / パス未設定時はデフォルトファイルを既定値として割り当てる
+  if (!settings.replaceDictPath) settings.replaceDictPath = defaultFilePath('dict')
+  if (!settings.hallucinationsListPath) settings.hallucinationsListPath = defaultFilePath('hallucinations')
+  // 永続化された設定から来るカスタムパスも、過去にユーザー承認されたものとして allowlist に追加
+  if (settings.replaceDictPath) registerDialogPath(settings.replaceDictPath)
+  if (settings.hallucinationsListPath) registerDialogPath(settings.hallucinationsListPath)
   const pipeline = new Pipeline(settings)
 
 
@@ -128,7 +145,23 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
         { name: 'All', extensions: ['*'] }
       ]
     })
-    return r.canceled ? null : r.filePaths[0]
+    if (r.canceled || !r.filePaths[0]) return null
+    registerDialogPath(r.filePaths[0])
+    return r.filePaths[0]
+  })
+
+  ipcMain.handle('dialog:openHallucinationsFile', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'ハルシネーション抑制リストを選択 (1行1パターン)',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Text', extensions: ['txt'] },
+        { name: 'All', extensions: ['*'] }
+      ]
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    registerDialogPath(r.filePaths[0])
+    return r.filePaths[0]
   })
 
   ipcMain.handle(
@@ -201,6 +234,22 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
 
   ipcMain.handle('llm:unload', async () => {
     await unloadModel()
+  })
+
+  ipcMain.handle('userFile:defaultPath', (_e, kind: UserFileKind) => defaultFilePath(kind))
+
+  ipcMain.handle('userFile:read', async (_e, path: string) => {
+    if (!isPathAllowed(path)) {
+      throw new Error(`このパスへのアクセスは許可されていません: ${path}`)
+    }
+    return await readUserFile(path)
+  })
+
+  ipcMain.handle('userFile:write', async (_e, path: string, content: string) => {
+    if (!isPathAllowed(path)) {
+      throw new Error(`このパスへの書き込みは許可されていません: ${path}`)
+    }
+    await writeUserFile(path, content)
   })
 }
 

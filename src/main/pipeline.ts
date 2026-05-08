@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { basename, extname, join } from 'path'
 import { Semaphore } from './queue'
 import { applyDictionaryToFile, loadReplaceRules } from './replace'
+import { applyHallucinationSuppression } from './suppress'
 import { parseSrt, serializeSrt } from './srt'
 import { ensureModelLoaded } from './llm/manager'
 import { correctCues } from './llm/correct'
@@ -291,6 +292,23 @@ export class Pipeline {
         await fs.mkdir(job.outputDir, { recursive: true })
         const outputPath = await this.runWhisper(id, tempWav!, job.outputDir, job.inputPath)
         this.update(id, { outputPath })
+
+        if (this.settings.suppressHallucinations) {
+          this.update(id, { phase: 'postprocess' })
+          try {
+            const dropped = await applyHallucinationSuppression(
+              outputPath,
+              this.settings.hallucinationsListPath
+            )
+            if (dropped > 0) {
+              this.appendLog(id, `[suppress] dropped ${dropped} hallucination cue(s)`)
+            } else {
+              this.appendLog(id, `[suppress] no hallucination cues detected`)
+            }
+          } catch (e) {
+            this.appendLog(id, `[suppress] error: ${errMsg(e)}`)
+          }
+        }
 
         if (this.settings.replaceDictPath) {
           this.update(id, { phase: 'postprocess' })

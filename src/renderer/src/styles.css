@@ -489,6 +489,60 @@ button:disabled {
   padding: 20px 24px 28px;
 }
 
+.file-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.file-editor-path {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.file-editor-path input {
+  font: inherit;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 11px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  flex: 1;
+  min-width: 0;
+}
+.file-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.file-editor-body textarea {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  resize: vertical;
+  min-height: 160px;
+  white-space: pre;
+  tab-size: 8;
+}
+.file-editor-body textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.file-editor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .error-boundary {
   max-width: 720px;
   margin: 60px auto;

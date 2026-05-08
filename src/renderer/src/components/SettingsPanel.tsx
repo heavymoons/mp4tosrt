@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import type { Settings, AudioFilters } from '../../../shared/types'
 import LlmPanel from './LlmPanel'
+import FileEditor from './FileEditor'
 
 const MODEL_PRESETS = [
   'mlx-community/whisper-large-v3-turbo',
@@ -45,14 +46,7 @@ export default function SettingsPanel({
     onChange({ audioFilters: { ...settings.audioFilters, ...patch } })
   }
 
-  const pickDict = async (): Promise<void> => {
-    const p = await window.api.openDictFile()
-    if (p) onChange({ replaceDictPath: p })
-  }
 
-  const clearDict = (): void => {
-    onChange({ replaceDictPath: undefined })
-  }
 
   return (
     <section className="card">
@@ -247,21 +241,50 @@ export default function SettingsPanel({
 
           <div className="settings-section">
             <div className="settings-section-head">
+              <span>後処理 — ハルシネーション抑制</span>
+              <span className="muted small">「ご視聴ありがとうございました」型の無音区間誤検出を削除</span>
+            </div>
+            <div className="settings-grid">
+              <label className="checkbox full">
+                <input
+                  type="checkbox"
+                  checked={settings.suppressHallucinations}
+                  onChange={e => onChange({ suppressHallucinations: e.target.checked })}
+                />
+                <span>
+                  ハルシネーション抑制を有効化
+                  <span className="muted small">
+                    {' '}(内蔵パターンに加え、下のファイル内容も抑制対象になる)
+                  </span>
+                </span>
+              </label>
+            </div>
+            {settings.hallucinationsListPath && (
+              <FileEditor
+                label="追加の抑制リスト"
+                kind="hallucinations"
+                path={settings.hallucinationsListPath}
+                onPathChange={p => onChange({ hallucinationsListPath: p })}
+                pickFile={() => window.api.openHallucinationsFile()}
+                enabled={settings.suppressHallucinations}
+              />
+            )}
+          </div>
+
+          <div className="settings-section">
+            <div className="settings-section-head">
               <span>後処理 — 用語辞書（単純置換）</span>
               <span className="muted small">誤変換 [TAB] 正解 / 1行1ルール</span>
             </div>
-            <div className="settings-grid">
-              <label className="full">
-                用語辞書ファイル
-                <div className="row">
-                  <input readOnly value={settings.replaceDictPath ?? '(未設定)'} />
-                  <button onClick={() => void pickDict()}>選択…</button>
-                  {settings.replaceDictPath && (
-                    <button className="ghost" onClick={clearDict}>クリア</button>
-                  )}
-                </div>
-              </label>
-            </div>
+            {settings.replaceDictPath && (
+              <FileEditor
+                label="用語辞書ファイル"
+                kind="dict"
+                path={settings.replaceDictPath}
+                onPathChange={p => onChange({ replaceDictPath: p })}
+                pickFile={() => window.api.openDictFile()}
+              />
+            )}
           </div>
 
           <LlmPanel settings={settings} onChange={onChange} />
