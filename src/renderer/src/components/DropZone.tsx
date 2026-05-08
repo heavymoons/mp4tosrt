@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useT } from '../i18n'
 
 type Props = {
   onFiles: (paths: string[]) => void
@@ -7,6 +8,7 @@ type Props = {
 }
 
 export default function DropZone({ onFiles, onPick, disabled }: Props): JSX.Element {
+  const t = useT()
   const [hover, setHover] = useState(false)
 
   const onDrop = (e: React.DragEvent<HTMLElement>): void => {
@@ -32,9 +34,9 @@ export default function DropZone({ onFiles, onPick, disabled }: Props): JSX.Elem
       onDragLeave={() => setHover(false)}
       onDrop={onDrop}
     >
-      <p>{disabled ? '依存ツールをセットアップしてください' : '動画ファイルをここにドロップ、または'}</p>
+      <p>{disabled ? t('drop.disabled') : t('drop.hint')}</p>
       <button onClick={onPick} disabled={disabled}>
-        ファイルを選択…
+        {t('drop.pick')}
       </button>
     </section>
   )

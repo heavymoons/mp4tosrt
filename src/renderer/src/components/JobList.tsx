@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react'
+import { useT } from '../i18n'
+import type { LocaleKey } from '../i18n/strings'
 
 let mediaPortCache: number | null = null
 async function getMediaPort(): Promise<number> {
@@ -8,21 +10,22 @@ async function getMediaPort(): Promise<number> {
 }
 import type { Job } from '../../../shared/types'
 
-const STATUS_LABEL: Record<Job['status'], string> = {
-  queued: '待機',
-  converting: '音声変換中',
-  transcribing: '文字起こし中',
-  awaiting: 'プロンプト入力待ち',
-  done: '完了',
-  error: 'エラー',
-  cancelled: '中止'
+const STATUS_LABEL_KEY: Record<Job['status'], LocaleKey> = {
+  queued: 'job.status.queued',
+  converting: 'job.status.converting',
+  transcribing: 'job.status.transcribing',
+  awaiting: 'job.status.awaiting',
+  done: 'job.status.done',
+  error: 'job.status.error',
+  cancelled: 'job.status.cancelled'
 }
 
-const PHASE_LABEL: Partial<Record<Job['phase'], string>> = {
-  postprocess: '後処理',
-  'awaiting-prompt': 'プロンプト入力待ち',
-  'llm-correct': 'LLM校正中',
-  embed: '字幕埋め込み中'
+const PHASE_LABEL_KEY: Partial<Record<Job['phase'], LocaleKey>> = {
+  postprocess: 'job.phase.postprocess',
+  'awaiting-prompt': 'job.phase.awaiting-prompt',
+  'llm-correct': 'job.phase.llm-correct',
+  embed: 'job.phase.embed',
+  fcpxml: 'job.phase.fcpxml'
 }
 
 function basename(path: string): string {
@@ -30,14 +33,19 @@ function basename(path: string): string {
   return parts[parts.length - 1] || path
 }
 
-function elapsed(job: Job): string | null {
-  if (!job.startedAt) return null
-  const end = job.finishedAt ?? Date.now()
-  const ms = end - job.startedAt
-  const s = Math.floor(ms / 1000)
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return m > 0 ? `${m}分${r}秒` : `${s}秒`
+function useElapsed(): (job: Job) => string | null {
+  const t = useT()
+  return job => {
+    if (!job.startedAt) return null
+    const end = job.finishedAt ?? Date.now()
+    const ms = end - job.startedAt
+    const s = Math.floor(ms / 1000)
+    const m = Math.floor(s / 60)
+    const r = s % 60
+    return m > 0
+      ? t('job.elapsed.ms', { minutes: m, seconds: r })
+      : t('job.elapsed.s', { seconds: s })
+  }
 }
 
 function JobItem({
@@ -48,6 +56,8 @@ function JobItem({
   onRemove: (id: string) => void
   onReveal: (path: string) => void
 }): JSX.Element {
+  const t = useT()
+  const elapsed = useElapsed()
   const isAwaiting = job.status === 'awaiting'
   const [showLog, setShowLog] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -88,7 +98,9 @@ function JobItem({
     job.status === 'cancelled' ||
     job.status === 'awaiting'
   const hasBaseSrt = Boolean(job.outputPath)
-  const t = elapsed(job)
+  const elapsedText = elapsed(job)
+  const phaseKey = PHASE_LABEL_KEY[job.phase]
+  const phaseOrStatus = phaseKey ? t(phaseKey) : t(STATUS_LABEL_KEY[job.status])
 
   const savePrompt = (): void => {
     if (promptDraft !== (job.extraPrompt ?? '')) {
@@ -100,9 +112,7 @@ function JobItem({
     if (embedding) return
     setRerunError(null)
     if (typeof window.api.rerunJobEmbed !== 'function') {
-      setRerunError(
-        'window.api.rerunJobEmbed が見つかりません。preload が古いため、アプリを再起動してください。'
-      )
+      setRerunError(t('job.error.preload.embed'))
       return
     }
     setEmbedding(true)
@@ -119,16 +129,18 @@ function JobItem({
     if (rerunning) return
     setRerunError(null)
     if (typeof window.api.rerunJobFromLlm !== 'function') {
-      setRerunError(
-        'window.api.rerunJobFromLlm が見つかりません。preload が古いため、アプリを再起動してください (npm run dev を Ctrl+C → 再実行)。'
-      )
+      setRerunError(t('job.error.preload.rerun'))
       return
     }
     if (promptDraft !== (job.extraPrompt ?? '')) {
       try {
         await window.api.setJobExtraPrompt(job.id, promptDraft)
       } catch (e) {
-        setRerunError(`extraPrompt 保存失敗: ${e instanceof Error ? e.message : String(e)}`)
+        setRerunError(
+          t('job.error.savePromptFailed', {
+            error: e instanceof Error ? e.message : String(e)
+          })
+        )
         return
       }
     }
@@ -149,10 +161,8 @@ function JobItem({
           <span className="job-name" title={job.inputPath}>
             {basename(job.inputPath)}
           </span>
-          <span className="job-status">
-            {PHASE_LABEL[job.phase] ?? STATUS_LABEL[job.status]}
-          </span>
-          {t && <span className="muted small">{t}</span>}
+          <span className="job-status">{phaseOrStatus}</span>
+          {elapsedText && <span className="muted small">{elapsedText}</span>}
         </div>
         <div className="job-actions">
           <button
@@ -161,20 +171,20 @@ function JobItem({
               setShowPreview(s => !s)
               setPreviewError(null)
             }}
-            title="動画をインラインプレビュー"
+            title={t('job.preview.title')}
           >
-            {showPreview ? '▾ プレビュー' : '▸ プレビュー'}
+            {showPreview ? t('job.preview.hide') : t('job.preview.show')}
           </button>
           <button
             className="ghost small"
             onClick={() => onReveal(job.inputPath)}
-            title="元動画を Finder で表示（QuickTime 等で開ける）"
+            title={t('job.reveal.video.title')}
           >
-            元動画を表示
+            {t('job.reveal.video')}
           </button>
           {job.outputPath && (
             <button className="ghost small" onClick={() => onReveal(job.outputPath!)}>
-              SRT を表示
+              {t('job.reveal.srt')}
             </button>
           )}
           {hasBaseSrt && (canRerun || embedding) && (
@@ -182,28 +192,31 @@ function JobItem({
               className="ghost small"
               onClick={() => void rerunEmbed()}
               disabled={embedding || !canRerun}
-              title={
-                '.corrected.srt（無ければ .srt）を外部エディタで手直ししてからこのボタンを押すと、\n' +
-                'その内容を反映した .subbed.mp4 を再生成します。\n' +
-                '元動画・元 SRT は触りません。'
-              }
+              title={t('job.embed.title')}
             >
-              {embedding ? 'MP4 出力中…' : 'MP4 へ字幕埋め込み'}
+              {embedding ? t('job.embed.busy') : t('job.embed.button')}
             </button>
           )}
           <button className="ghost small" onClick={() => setShowPrompt(s => !s)}>
-            {job.extraPrompt ? '✎ 追加プロンプト' : '+ 追加プロンプト'}
+            {job.extraPrompt ? t('job.prompt.toggle.edit') : t('job.prompt.toggle.add')}
           </button>
           <button className="ghost small" onClick={() => setShowLog(s => !s)}>
-            {showLog ? 'ログを閉じる' : 'ログ'}
+            {showLog ? t('job.log.hide') : t('job.log.show')}
+          </button>
+          <button
+            className="ghost small"
+            onClick={() => void window.api.openJobLog(job.id)}
+            title={t('job.log.full.title')}
+          >
+            {t('job.log.full')}
           </button>
           {inProgress ? (
             <button className="ghost small" onClick={() => onCancel(job.id)}>
-              中止
+              {t('job.cancel')}
             </button>
           ) : (
             <button className="ghost small" onClick={() => onRemove(job.id)}>
-              削除
+              {t('job.remove')}
             </button>
           )}
         </div>
@@ -229,8 +242,7 @@ function JobItem({
                 4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
               } as Record<number, string>)[code ?? 0] ?? 'unknown'
               setPreviewError(
-                `動画の読み込みに失敗しました (${codeName}): ${msg ?? 'no details'}\n` +
-                  '「元動画を表示」ボタンから外部プレイヤーで再生できます。'
+                t('job.preview.error', { code: codeName, msg: msg ?? 'no details' })
               )
             }}
           />
@@ -251,31 +263,29 @@ function JobItem({
               setFocusedPrompt(false)
               savePrompt()
             }}
-            placeholder="例: 〇〇による政治系ライブの書き起こし。日本の政治家・地名が頻出。フォーマルな文体で校正"
+            placeholder={t('job.prompt.placeholder')}
           />
           <div className="job-prompt-actions">
-            <span className="muted small">
-              LLM 校正時のシステムプロンプトに付加される
-            </span>
+            <span className="muted small">{t('job.prompt.hint')}</span>
             {hasBaseSrt && (canRerun || rerunning) && (
               <button
                 className="ghost small"
                 onClick={() => void rerun()}
                 disabled={rerunning || !canRerun || (isAwaiting && !promptDraft.trim())}
-                title={isAwaiting && !promptDraft.trim() ? '追加プロンプトを入力してください' : undefined}
+                title={isAwaiting && !promptDraft.trim() ? t('job.prompt.startTitle') : undefined}
               >
                 {rerunning
-                  ? '実行中…'
+                  ? t('job.prompt.running')
                   : isAwaiting
-                    ? 'LLM校正を開始'
-                    : 'LLM校正からやり直す'}
+                    ? t('job.prompt.startCorrection')
+                    : t('job.prompt.rerunCorrection')}
               </button>
             )}
           </div>
           {rerunError && <div className="job-error">{rerunError}</div>}
         </div>
       )}
-      {showLog && <pre className="job-log">{job.log.slice(-200).join('\n')}</pre>}
+      {showLog && <pre className="job-log">{job.log.slice(-2000).join('\n')}</pre>}
     </div>
   )
 }
@@ -291,21 +301,22 @@ type Props = {
 export default function JobList({
   jobs, onCancel, onRemove, onReveal, onClearFinished
 }: Props): JSX.Element {
+  const t = useT()
   const finished = jobs.filter(
     j => j.status === 'done' || j.status === 'error' || j.status === 'cancelled'
   )
   return (
     <section className="card jobs-card">
       <div className="card-head">
-        <h2>ジョブ {jobs.length > 0 && <span className="muted">({jobs.length})</span>}</h2>
+        <h2>{t('jobs.title')} {jobs.length > 0 && <span className="muted">({jobs.length})</span>}</h2>
         {finished.length > 0 && (
           <button className="ghost small" onClick={onClearFinished}>
-            完了済みを片付け
+            {t('jobs.clearFinished')}
           </button>
         )}
       </div>
       {jobs.length === 0 && (
-        <div className="empty">ファイルが追加されるとここに表示されます</div>
+        <div className="empty">{t('jobs.empty')}</div>
       )}
       {jobs.map(j => (
         <JobItem

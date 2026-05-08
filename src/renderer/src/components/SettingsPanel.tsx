@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import type { Settings, AudioFilters } from '../../../shared/types'
 import LlmPanel from './LlmPanel'
 import FileEditor from './FileEditor'
+import { useT } from '../i18n'
+import type { LocaleKey } from '../i18n/strings'
 
 const MODEL_PRESETS = [
   'mlx-community/whisper-large-v3-turbo',
@@ -13,22 +15,22 @@ const MODEL_PRESETS = [
   'kaiinui/kotoba-whisper-v2.0-mlx'
 ]
 
-const LANGUAGES: { code: string; label: string }[] = [
-  { code: '', label: '自動検出' },
-  { code: 'ja', label: '日本語' },
-  { code: 'en', label: 'English' },
-  { code: 'zh', label: '中文' },
-  { code: 'ko', label: '한국어' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' }
+const LANGUAGES: { code: string; labelKey: LocaleKey }[] = [
+  { code: '', labelKey: 'settings.language.auto' },
+  { code: 'ja', labelKey: 'settings.language.ja' },
+  { code: 'en', labelKey: 'settings.language.en' },
+  { code: 'zh', labelKey: 'settings.language.zh' },
+  { code: 'ko', labelKey: 'settings.language.ko' },
+  { code: 'es', labelKey: 'settings.language.es' },
+  { code: 'fr', labelKey: 'settings.language.fr' },
+  { code: 'de', labelKey: 'settings.language.de' }
 ]
 
-const HIGHPASS_OPTIONS: { value: number; label: string }[] = [
-  { value: 0, label: 'オフ' },
-  { value: 80, label: '80 Hz (推奨)' },
-  { value: 120, label: '120 Hz' },
-  { value: 200, label: '200 Hz (低音減衰)' }
+const HIGHPASS_OPTIONS: { value: number; labelKey: LocaleKey }[] = [
+  { value: 0, labelKey: 'settings.audio.highpass.off' },
+  { value: 80, labelKey: 'settings.audio.highpass.80' },
+  { value: 120, labelKey: 'settings.audio.highpass.120' },
+  { value: 200, labelKey: 'settings.audio.highpass.200' }
 ]
 
 type Props = {
@@ -40,29 +42,28 @@ type Props = {
 export default function SettingsPanel({
   settings, onPickOutputDir, onChange
 }: Props): JSX.Element {
+  const t = useT()
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const setFilter = (patch: Partial<AudioFilters>): void => {
     onChange({ audioFilters: { ...settings.audioFilters, ...patch } })
   }
 
-
-
   return (
     <section className="card">
       <div className="card-head">
-        <h2>設定</h2>
+        <h2>{t('settings.title')}</h2>
         <button className="ghost small" onClick={() => setShowAdvanced(s => !s)}>
-          {showAdvanced ? '詳細を閉じる' : '詳細設定…'}
+          {showAdvanced ? t('settings.advanced.hide') : t('settings.advanced.show')}
         </button>
       </div>
 
       <div className="settings-grid">
         <label className="full">
-          出力先
+          {t('settings.outputDir')}
           <div className="row">
-            <input readOnly value={settings.outputDir || '(未指定 — ファイル追加時に選択)'} />
-            <button onClick={onPickOutputDir}>変更…</button>
+            <input readOnly value={settings.outputDir || t('settings.outputDir.empty')} />
+            <button onClick={onPickOutputDir}>{t('settings.outputDir.change')}</button>
           </div>
         </label>
 
@@ -73,13 +74,25 @@ export default function SettingsPanel({
             onChange={e => onChange({ embedSubtitles: e.target.checked })}
           />
           <span>
-            字幕を埋め込んだ <code>.subbed.mp4</code> も出力
-            <span className="muted small"> (再エンコードなし・LLM校正済みがあれば優先使用)</span>
+            {t('settings.embedSubtitles.main')}
+            <span className="muted small"> {t('settings.embedSubtitles.hint')}</span>
+          </span>
+        </label>
+
+        <label className="checkbox full">
+          <input
+            type="checkbox"
+            checked={settings.outputFcpxml}
+            onChange={e => onChange({ outputFcpxml: e.target.checked })}
+          />
+          <span>
+            {t('settings.outputFcpxml.main')}
+            <span className="muted small"> {t('settings.outputFcpxml.hint')}</span>
           </span>
         </label>
 
         <label>
-          Whisper モデル
+          {t('settings.model')}
           <select
             value={settings.model}
             onChange={e => onChange({ model: e.target.value })}
@@ -91,21 +104,21 @@ export default function SettingsPanel({
         </label>
 
         <label>
-          言語
+          {t('settings.language')}
           <select
             value={settings.language ?? ''}
             onChange={e => onChange({ language: e.target.value || undefined })}
           >
             {LANGUAGES.map(l => (
               <option key={l.code || 'auto'} value={l.code}>
-                {l.label}
+                {t(l.labelKey)}
               </option>
             ))}
           </select>
         </label>
 
         <label>
-          ffmpeg 並列
+          {t('settings.ffmpegConcurrency')}
           <input
             type="number"
             min={1}
@@ -118,7 +131,7 @@ export default function SettingsPanel({
         </label>
 
         <label>
-          mlx-whisper 並列
+          {t('settings.whisperConcurrency')}
           <input
             type="number"
             min={1}
@@ -135,8 +148,8 @@ export default function SettingsPanel({
         <>
           <div className="settings-section">
             <div className="settings-section-head">
-              <span>音声フィルタ</span>
-              <span className="muted small">素材によって最適解が変わるので保守的にデフォを設定</span>
+              <span>{t('settings.audio.title')}</span>
+              <span className="muted small">{t('settings.audio.subtitle')}</span>
             </div>
             <div className="settings-grid">
               <label className="checkbox">
@@ -145,17 +158,17 @@ export default function SettingsPanel({
                   checked={settings.audioFilters.loudnorm}
                   onChange={e => setFilter({ loudnorm: e.target.checked })}
                 />
-                <span>ラウドネス正規化 <span className="muted small">(loudnorm)</span></span>
+                <span>{t('settings.audio.loudnorm')} <span className="muted small">{t('settings.audio.loudnorm.hint')}</span></span>
               </label>
 
               <label>
-                ハイパスフィルタ
+                {t('settings.audio.highpass')}
                 <select
                   value={settings.audioFilters.highpassHz}
                   onChange={e => setFilter({ highpassHz: parseInt(e.target.value) || 0 })}
                 >
                   {HIGHPASS_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
                   ))}
                 </select>
               </label>
@@ -166,7 +179,7 @@ export default function SettingsPanel({
                   checked={settings.audioFilters.compress}
                   onChange={e => setFilter({ compress: e.target.checked })}
                 />
-                <span>コンプレッサ <span className="muted small">(音量差大 / インタビュー向け)</span></span>
+                <span>{t('settings.audio.compress')} <span className="muted small">{t('settings.audio.compress.hint')}</span></span>
               </label>
 
               <label className="checkbox">
@@ -175,15 +188,15 @@ export default function SettingsPanel({
                   checked={settings.audioFilters.denoise}
                   onChange={e => setFilter({ denoise: e.target.checked })}
                 />
-                <span>ノイズ低減 <span className="muted small">(afftdn / 素材次第で逆効果)</span></span>
+                <span>{t('settings.audio.denoise')} <span className="muted small">{t('settings.audio.denoise.hint')}</span></span>
               </label>
             </div>
           </div>
 
           <div className="settings-section">
             <div className="settings-section-head">
-              <span>Whisper オプション</span>
-              <span className="muted small">書き起こしの抜け / 過剰検出のバランス調整</span>
+              <span>{t('settings.whisper.title')}</span>
+              <span className="muted small">{t('settings.whisper.subtitle')}</span>
             </div>
             <div className="settings-grid">
               <label className="checkbox full">
@@ -193,11 +206,8 @@ export default function SettingsPanel({
                   onChange={e => onChange({ conditionOnPreviousText: e.target.checked })}
                 />
                 <span>
-                  前のキューを参考にする
-                  <span className="muted small">
-                    {' '}
-                    (ON にすると、前のキューの誤認識を引きずって「！」連発などの暴走を起こしやすいのでデフォ OFF)
-                  </span>
+                  {t('settings.whisper.condition')}
+                  <span className="muted small">{' '}{t('settings.whisper.condition.hint')}</span>
                 </span>
               </label>
 
@@ -208,20 +218,16 @@ export default function SettingsPanel({
                   onChange={e => onChange({ wordTimestamps: e.target.checked })}
                 />
                 <span>
-                  単語タイムスタンプを使う
-                  <span className="muted small">
-                    {' '}(クロスアテンションで字幕の開始時刻を発話開始に合わせる、推論時間+10%程度)
-                  </span>
+                  {t('settings.whisper.wordTimestamps')}
+                  <span className="muted small">{' '}{t('settings.whisper.wordTimestamps.hint')}</span>
                 </span>
               </label>
 
               <label className="full">
                 <span>
-                  no-speech-threshold:{' '}
+                  {t('settings.whisper.noSpeech.label')}{' '}
                   <strong className="mono">{settings.noSpeechThreshold.toFixed(2)}</strong>
-                  <span className="muted small">
-                    {' '}下げるほど抜けは減るがノイズ誤検出が増える (デフォ 0.30)
-                  </span>
+                  <span className="muted small">{' '}{t('settings.whisper.noSpeech.hint')}</span>
                 </span>
                 <input
                   type="range"
@@ -237,11 +243,9 @@ export default function SettingsPanel({
 
               <label className="full">
                 <span>
-                  logprob-threshold:{' '}
+                  {t('settings.whisper.logprob.label')}{' '}
                   <strong className="mono">{settings.logprobThreshold.toFixed(2)}</strong>
-                  <span className="muted small">
-                    {' '}下げるほど低品質decode出力も採用される (デフォ -1.50)
-                  </span>
+                  <span className="muted small">{' '}{t('settings.whisper.logprob.hint')}</span>
                 </span>
                 <input
                   type="range"
@@ -259,8 +263,8 @@ export default function SettingsPanel({
 
           <div className="settings-section">
             <div className="settings-section-head">
-              <span>後処理 — ハルシネーション抑制</span>
-              <span className="muted small">「ご視聴ありがとうございました」型の無音区間誤検出を削除</span>
+              <span>{t('settings.postproc.suppress.title')}</span>
+              <span className="muted small">{t('settings.postproc.suppress.subtitle')}</span>
             </div>
             <div className="settings-grid">
               <label className="checkbox full">
@@ -270,16 +274,14 @@ export default function SettingsPanel({
                   onChange={e => onChange({ suppressHallucinations: e.target.checked })}
                 />
                 <span>
-                  ハルシネーション抑制を有効化
-                  <span className="muted small">
-                    {' '}(内蔵パターンに加え、下のファイル内容も抑制対象になる)
-                  </span>
+                  {t('settings.postproc.suppress.enable')}
+                  <span className="muted small">{' '}{t('settings.postproc.suppress.enable.hint')}</span>
                 </span>
               </label>
             </div>
             {settings.hallucinationsListPath && (
               <FileEditor
-                label="追加の抑制リスト"
+                label={t('settings.postproc.suppress.fileLabel')}
                 kind="hallucinations"
                 path={settings.hallucinationsListPath}
                 onPathChange={p => onChange({ hallucinationsListPath: p })}
@@ -291,12 +293,12 @@ export default function SettingsPanel({
 
           <div className="settings-section">
             <div className="settings-section-head">
-              <span>後処理 — 用語辞書（単純置換）</span>
-              <span className="muted small">誤変換 [TAB] 正解 / 1行1ルール</span>
+              <span>{t('settings.postproc.dict.title')}</span>
+              <span className="muted small">{t('settings.postproc.dict.subtitle')}</span>
             </div>
             {settings.replaceDictPath && (
               <FileEditor
-                label="用語辞書ファイル"
+                label={t('settings.postproc.dict.fileLabel')}
                 kind="dict"
                 path={settings.replaceDictPath}
                 onPathChange={p => onChange({ replaceDictPath: p })}

@@ -5,6 +5,7 @@ import type {
   LlmDownloadProgress,
   Settings
 } from '../../../shared/types'
+import { useT } from '../i18n'
 
 type Props = {
   settings: Settings
@@ -24,6 +25,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
+  const t = useT()
   const [presets, setPresets] = useState<LlmModelPreset[]>([])
   const [status, setStatus] = useState<LlmModelStatus | null>(null)
   const [progress, setProgress] = useState<LlmDownloadProgress | null>(null)
@@ -91,10 +93,8 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
   return (
     <div className="settings-section">
       <div className="settings-section-head">
-        <span>後処理 — LLM 校正（ローカル）</span>
-        <span className="muted small">
-          書き起こし結果を Qwen 等で日本語として整える。校正済みは <code>.corrected.srt</code> に保存
-        </span>
+        <span>{t('llm.title')}</span>
+        <span className="muted small">{t('llm.subtitle')}</span>
       </div>
 
       <div className="settings-grid">
@@ -105,8 +105,8 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
             onChange={e => setLlm({ enabled: e.target.checked })}
           />
           <span>
-            LLM 校正を有効化
-            <span className="muted small"> (モデル未ダウンロード時は最初の校正時に取得)</span>
+            {t('llm.enable')}
+            <span className="muted small"> {t('llm.enable.hint')}</span>
           </span>
         </label>
 
@@ -118,13 +118,13 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
             disabled={!settings.llm.enabled}
           />
           <span>
-            ジョブごとの追加プロンプトを必須にする
-            <span className="muted small"> (オフの場合、空でも自動で校正実行)</span>
+            {t('llm.requirePrompt')}
+            <span className="muted small"> {t('llm.requirePrompt.hint')}</span>
           </span>
         </label>
 
         <label className="full">
-          共通プロンプト（全ジョブ共通で LLM に渡される / 任意）
+          {t('llm.shared')}
           <textarea
             rows={3}
             value={sharedDraft}
@@ -138,7 +138,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
                 setLlm({ sharedPrompt: sharedDraft })
               }
             }}
-            placeholder="例: 自分のYouTubeチャンネル「heavymoons」の動画です。日本語の固有名詞や軍事/政治用語が頻出します。"
+            placeholder={t('llm.shared.placeholder')}
             disabled={!settings.llm.enabled}
             style={{
               fontFamily: 'inherit',
@@ -154,7 +154,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
         </label>
 
         <label className="full">
-          モデル
+          {t('llm.model')}
           <select
             value={settings.llm.modelId}
             onChange={e => setLlm({ modelId: e.target.value })}
@@ -168,7 +168,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
         </label>
 
         <label>
-          バッチサイズ <span className="muted small">(1回のリクエストで送るキュー数)</span>
+          {t('llm.batchSize')} <span className="muted small">{t('llm.batchSize.hint')}</span>
           <input
             type="number"
             min={5}
@@ -181,7 +181,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
         </label>
 
         <label>
-          コンテキストサイズ
+          {t('llm.contextSize')}
           <select
             value={settings.llm.contextSize}
             onChange={e => setLlm({ contextSize: parseInt(e.target.value) || 4096 })}
@@ -201,11 +201,12 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
             disabled={!settings.replaceDictPath}
           />
           <span>
-            用語辞書をプロンプトに渡す
+            {t('llm.useDictionary')}
             <span className="muted small">
+              {' '}
               {settings.replaceDictPath
-                ? ' (固有名詞を文脈つきで修正できる)'
-                : ' (上の「用語辞書ファイル」を設定すると有効化)'}
+                ? t('llm.useDictionary.hint.enabled')
+                : t('llm.useDictionary.hint.disabled')}
             </span>
           </span>
         </label>
@@ -213,15 +214,15 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
         <div className="full">
           <div className="row" style={{ alignItems: 'center', gap: 10 }}>
             <span className="muted small">
-              {currentPreset && `モデル: ${currentPreset.label}`}
+              {currentPreset && t('llm.status.modelPrefix', { label: currentPreset.label })}
             </span>
             <span className="muted small">|</span>
             <span className="muted small">
-              {status?.downloaded ? '✓ ダウンロード済み' : '未ダウンロード'}
+              {status?.downloaded ? t('llm.status.downloaded') : t('llm.status.notDownloaded')}
             </span>
             {!status?.downloaded && !downloading && (
               <button onClick={() => void startDownload()} disabled={downloading}>
-                ダウンロード
+                {t('llm.download')}
               </button>
             )}
           </div>
@@ -233,8 +234,14 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
               </div>
               <div className="muted small" style={{ marginTop: 4 }}>
                 {progress?.totalBytes
-                  ? `${formatBytes(progress.downloadedBytes)} / ${formatBytes(progress.totalBytes)} (${pct}%)`
-                  : `${formatBytes(progress?.downloadedBytes ?? 0)} ダウンロード中…`}
+                  ? t('llm.download.progress', {
+                      cur: formatBytes(progress.downloadedBytes),
+                      total: formatBytes(progress.totalBytes),
+                      pct
+                    })
+                  : t('llm.download.progress.unknown', {
+                      cur: formatBytes(progress?.downloadedBytes ?? 0)
+                    })}
               </div>
             </div>
           )}

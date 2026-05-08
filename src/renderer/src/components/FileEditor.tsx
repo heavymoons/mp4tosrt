@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useT } from '../i18n'
 
 type Kind = 'dict' | 'hallucinations'
 
@@ -19,6 +20,7 @@ function basename(p: string): string {
 export default function FileEditor({
   label, kind, path, onPathChange, pickFile, enabled = true
 }: Props): JSX.Element {
+  const t = useT()
   const [defaultPath, setDefaultPath] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState('')
@@ -49,7 +51,7 @@ export default function FileEditor({
 
   const confirmDiscardIfDirty = (): boolean => {
     if (!dirty) return true
-    return window.confirm('未保存の変更があります。破棄して続行しますか？')
+    return window.confirm(t('file.confirmDiscard'))
   }
 
   const save = async (): Promise<void> => {
@@ -84,6 +86,26 @@ export default function FileEditor({
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
       if (dirty) void save()
+      return
+    }
+    // dict は「誤変換[TAB]正解」形式なので Tab で実際のタブ文字を挿入する
+    // (デフォルトの textarea は Tab がフォーカス移動になるためそのままでは入力不可)
+    if (
+      kind === 'dict' &&
+      e.key === 'Tab' &&
+      !e.shiftKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      e.preventDefault()
+      const ta = e.currentTarget
+      const start = ta.selectionStart
+      const end = ta.selectionEnd
+      setContent(content.slice(0, start) + '\t' + content.slice(end))
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = start + 1
+      })
     }
   }
 
@@ -97,22 +119,22 @@ export default function FileEditor({
         <div className="row">
           <input readOnly value={path} title={path} />
           {ready && !isDefault && (
-            <button onClick={useDefault} disabled={!enabled}>デフォルトに戻す</button>
+            <button onClick={useDefault} disabled={!enabled}>{t('file.useDefault')}</button>
           )}
-          <button onClick={() => void pickAnother()} disabled={!enabled}>別のファイル…</button>
+          <button onClick={() => void pickAnother()} disabled={!enabled}>{t('file.pickAnother')}</button>
           <button onClick={toggleOpen} disabled={!enabled}>
-            {open ? '閉じる' : '編集'}
+            {open ? t('file.close') : t('file.edit')}
           </button>
         </div>
         <div className="muted small">
-          {ready ? (isDefault ? 'デフォルトファイル' : 'カスタムファイル') : '読込中…'}
+          {ready ? (isDefault ? t('file.default') : t('file.custom')) : t('file.loading')}
           {' '}({basename(path)})
         </div>
       </label>
 
       {open && (
         <div className="file-editor-body">
-          {loading && <div className="muted small">読み込み中…</div>}
+          {loading && <div className="muted small">{t('file.loading')}</div>}
           {error && <div className="job-error">{error}</div>}
           <textarea
             rows={10}
@@ -123,10 +145,11 @@ export default function FileEditor({
           />
           <div className="file-editor-actions">
             <span className="muted small">
-              {dirty ? '※ 未保存の変更があります (Cmd+S で保存)' : '保存済み'}
+              {dirty ? t('file.unsavedHint') : t('file.saved')}
+              {kind === 'dict' && t('file.tabHint')}
             </span>
             <button onClick={() => void save()} disabled={!dirty}>
-              保存
+              {t('file.save')}
             </button>
             <button
               className="ghost"
@@ -136,7 +159,7 @@ export default function FileEditor({
               }}
               disabled={!dirty}
             >
-              元に戻す
+              {t('file.revert')}
             </button>
           </div>
         </div>

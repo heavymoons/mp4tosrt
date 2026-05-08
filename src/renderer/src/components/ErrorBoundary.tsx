@@ -29,17 +29,18 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
   render(): React.ReactNode {
     if (this.state.error) {
+      // ErrorBoundary は I18nProvider 外で発火し得るため固定バイリンガルにする。
       return (
         <div className="error-boundary">
-          <h2>UIエラーが発生しました</h2>
+          <h2>UI Error / UIエラーが発生しました</h2>
           <pre>{this.state.error.message}</pre>
           <details>
-            <summary>スタックトレース</summary>
+            <summary>Stack trace / スタックトレース</summary>
             <pre>{this.state.error.stack}</pre>
           </details>
           <div className="error-boundary-actions">
-            <button onClick={this.reset}>状態をリセット</button>
-            <button onClick={this.reload}>リロード</button>
+            <button onClick={this.reset}>Reset / 状態をリセット</button>
+            <button onClick={this.reload}>Reload / リロード</button>
           </div>
         </div>
       )

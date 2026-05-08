@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import readmeRaw from '../../../../README.md?raw'
+import readmeJa from '../../../../README.md?raw'
+import readmeEn from '../../../../README.en.md?raw'
+import { useT, useLocale } from '../i18n'
 
 marked.setOptions({ gfm: true, breaks: false })
 
@@ -10,6 +12,7 @@ type Props = {
 }
 
 export default function Help({ onClose }: Props): JSX.Element {
+  const t = useT()
   const html = useMemo(() => {
     const raw = marked.parse(readmeRaw) as string
     return DOMPurify.sanitize(raw, {
@@ -47,9 +50,9 @@ export default function Help({ onClose }: Props): JSX.Element {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>マニュアル</h2>
+          <h2>{t('app.manual')}</h2>
           <button className="ghost small" onClick={onClose}>
-            閉じる (Esc)
+            {t('file.close')} (Esc)
           </button>
         </div>
         <div

@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import type { ToolStatus, ToolsCheck } from '../../../shared/types'
+import { useT } from '../i18n'
 
 const FFMPEG_INSTALL = 'brew install ffmpeg'
 const MLX_INSTALL = 'brew install pipx && pipx ensurepath && pipx install mlx-whisper'
 
 function CopyButton({ value }: { value: string }): JSX.Element {
+  const t = useT()
   const [copied, setCopied] = useState(false)
   const onClick = async (): Promise<void> => {
     try {
@@ -17,7 +19,7 @@ function CopyButton({ value }: { value: string }): JSX.Element {
   }
   return (
     <button className="ghost small" onClick={onClick}>
-      {copied ? 'コピー済' : 'コピー'}
+      {copied ? t('tools.copied') : t('tools.copy')}
     </button>
   )
 }
@@ -30,6 +32,7 @@ function ToolRow({
   install: string
   hint?: string
 }): JSX.Element {
+  const t = useT()
   return (
     <div className="tool-row" data-found={status.found}>
       <div className="tool-name">{name}</div>
@@ -37,7 +40,7 @@ function ToolRow({
         {status.found ? (
           <>
             <span className="dot ok" />
-            インストール済み
+            {t('tools.installed')}
             {status.version && status.version !== 'installed' && (
               <span className="muted">{status.version}</span>
             )}
@@ -46,7 +49,7 @@ function ToolRow({
         ) : (
           <>
             <span className="dot bad" />
-            未インストール
+            {t('tools.notInstalled')}
           </>
         )}
       </div>
@@ -67,13 +70,14 @@ export default function ToolStatusPanel({
   tools: ToolsCheck
   onRefresh: () => void
 }): JSX.Element {
+  const t = useT()
   const allFound = tools.ffmpeg.found && tools.mlxWhisper.found
   return (
     <section className="card">
       <div className="card-head">
-        <h2>環境チェック {allFound && <span className="badge ok">OK</span>}</h2>
+        <h2>{t('tools.title')} {allFound && <span className="badge ok">OK</span>}</h2>
         <button className="ghost small" onClick={onRefresh}>
-          再チェック
+          {t('tools.recheck')}
         </button>
       </div>
       <ToolRow name="ffmpeg" status={tools.ffmpeg} install={FFMPEG_INSTALL} />
@@ -81,7 +85,7 @@ export default function ToolStatusPanel({
         name="mlx_whisper"
         status={tools.mlxWhisper}
         install={MLX_INSTALL}
-        hint="pipx 初回利用時はターミナルを開き直すか pipx ensurepath が必要"
+        hint={t('tools.mlxHint')}
       />
     </section>
   )

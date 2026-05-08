@@ -5,6 +5,7 @@ import SettingsPanel from './components/SettingsPanel'
 import DropZone from './components/DropZone'
 import JobList from './components/JobList'
 import Help from './components/Help'
+import { I18nProvider, detectLocale, useT, type Locale } from './i18n'
 
 export default function App(): JSX.Element {
   const [tools, setTools] = useState<ToolsCheck | null>(null)
@@ -98,40 +99,107 @@ export default function App(): JSX.Element {
     (a, b) => (a.startedAt ?? Number.MAX_SAFE_INTEGER) - (b.startedAt ?? Number.MAX_SAFE_INTEGER)
   )
   const allFound = Boolean(tools?.ffmpeg.found && tools?.mlxWhisper.found)
+  const locale: Locale = settings?.uiLocale ?? detectLocale()
 
+  const setLocale = (next: Locale): void => {
+    void updateSettings({ uiLocale: next })
+  }
+
+  return (
+    <I18nProvider locale={locale}>
+      <AppShell
+        tools={tools}
+        settings={settings}
+        jobs={jobsList}
+        helpOpen={helpOpen}
+        allFound={allFound}
+        locale={locale}
+        onLocaleChange={setLocale}
+        onOpenHelp={() => setHelpOpen(true)}
+        onCloseHelp={() => setHelpOpen(false)}
+        onRefreshTools={refreshTools}
+        onPickOutputDir={() => void pickOutputDir()}
+        onUpdateSettings={patch => void updateSettings(patch)}
+        onAddFiles={paths => void addFiles(paths)}
+        onPickFiles={() => void pickFiles()}
+        onCancelJob={cancelJob}
+        onRemoveJob={id => void removeJob(id)}
+        onReveal={reveal}
+        onClearFinished={() => void clearFinished()}
+      />
+    </I18nProvider>
+  )
+}
+
+type ShellProps = {
+  tools: ToolsCheck | null
+  settings: Settings | null
+  jobs: Job[]
+  helpOpen: boolean
+  allFound: boolean
+  locale: Locale
+  onLocaleChange: (l: Locale) => void
+  onOpenHelp: () => void
+  onCloseHelp: () => void
+  onRefreshTools: () => void
+  onPickOutputDir: () => void
+  onUpdateSettings: (patch: Partial<Settings>) => void
+  onAddFiles: (paths: string[]) => void
+  onPickFiles: () => void
+  onCancelJob: (id: string) => void
+  onRemoveJob: (id: string) => void
+  onReveal: (path: string) => void
+  onClearFinished: () => void
+}
+
+function AppShell({
+  tools, settings, jobs, helpOpen, allFound, locale,
+  onLocaleChange, onOpenHelp, onCloseHelp, onRefreshTools, onPickOutputDir,
+  onUpdateSettings, onAddFiles, onPickFiles, onCancelJob, onRemoveJob, onReveal, onClearFinished
+}: ShellProps): JSX.Element {
+  const t = useT()
   return (
     <div className="app">
       <header className="header">
         <h1>mp4tosrt</h1>
         <div className="header-right">
-          <span className="muted">動画ファイル → SRT 字幕（ffmpeg + mlx-whisper）</span>
-          <button className="ghost small" onClick={() => setHelpOpen(true)}>
-            マニュアル
+          <span className="muted">{t('app.subtitle')}</span>
+          <select
+            className="ghost small"
+            value={locale}
+            onChange={e => onLocaleChange(e.target.value as Locale)}
+            aria-label="UI language"
+          >
+            <option value="ja">{t('app.locale.ja')}</option>
+            <option value="en">{t('app.locale.en')}</option>
+          </select>
+          <button className="ghost small" onClick={onOpenHelp}>
+            {t('app.manual')}
           </button>
         </div>
       </header>
 
-      {tools && <ToolStatusPanel tools={tools} onRefresh={refreshTools} />}
+      {tools && <ToolStatusPanel tools={tools} onRefresh={onRefreshTools} />}
 
       {settings && (
         <SettingsPanel
           settings={settings}
-          onPickOutputDir={() => void pickOutputDir()}
-          onChange={patch => void updateSettings(patch)}
+          onPickOutputDir={onPickOutputDir}
+          onChange={onUpdateSettings}
         />
       )}
 
-      <DropZone onFiles={paths => void addFiles(paths)} onPick={() => void pickFiles()} disabled={!allFound} />
+      <DropZone onFiles={onAddFiles} onPick={onPickFiles} disabled={!allFound} />
 
       <JobList
-        jobs={jobsList}
-        onCancel={cancelJob}
-        onRemove={id => void removeJob(id)}
-        onReveal={reveal}
-        onClearFinished={() => void clearFinished()}
+        jobs={jobs}
+        onCancel={onCancelJob}
+        onRemove={onRemoveJob}
+        onReveal={onReveal}
+        onClearFinished={onClearFinished}
       />
 
-      {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <Help onClose={onCloseHelp} />}
     </div>
   )
 }
