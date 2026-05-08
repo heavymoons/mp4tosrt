@@ -6,6 +6,7 @@ import { app } from 'electron'
 import { Semaphore } from './queue'
 import { applyDictionaryToFile, loadReplaceRules } from './replace'
 import { applyHallucinationSuppression } from './suppress'
+import { generateFcpxml } from './fcpxml'
 import { parseSrt, serializeSrt } from './srt'
 import { ensureModelLoaded } from './llm/manager'
 import { correctCues } from './llm/correct'
@@ -195,6 +196,14 @@ export class Pipeline {
           await this.runEmbedSubtitles(id, job.inputPath, job.outputPath, job.outputDir)
         } catch (e) {
           this.appendLog(id, `[embed] failed: ${errMsg(e)}`)
+        }
+      }
+      if (this.settings.outputFcpxml) {
+        this.update(id, { phase: 'fcpxml', progress: 0 })
+        try {
+          await this.runGenerateFcpxml(id, job.inputPath, job.outputPath, job.outputDir)
+        } catch (e) {
+          this.appendLog(id, `[fcpxml] failed: ${errMsg(e)}`)
         }
       }
       this.update(id, {
@@ -404,6 +413,15 @@ export class Pipeline {
           }
         }
 
+        if (this.settings.outputFcpxml) {
+          this.update(id, { phase: 'fcpxml', progress: 0 })
+          try {
+            await this.runGenerateFcpxml(id, job.inputPath, outputPath, job.outputDir)
+          } catch (e) {
+            this.appendLog(id, `[fcpxml] failed: ${errMsg(e)}`)
+          }
+        }
+
         this.update(id, {
           status: 'done', phase: 'done', progress: 100, finishedAt: Date.now()
         })
@@ -554,6 +572,27 @@ export class Pipeline {
         }
       })
     })
+  }
+
+  private async runGenerateFcpxml(
+    id: string,
+    videoPath: string,
+    srtPath: string,
+    outDir: string
+  ): Promise<void> {
+    // 校正済みがあればそれを優先
+    const correctedPath = srtPath.replace(/\.srt$/i, '.corrected.srt')
+    let chosenSrt = srtPath
+    try {
+      await fs.access(correctedPath)
+      chosenSrt = correctedPath
+    } catch {
+      /* no corrected */
+    }
+    const stem = basename(videoPath, extname(videoPath))
+    const outPath = join(outDir, `${stem}.fcpxml`)
+    this.appendLog(id, `[fcpxml] using ${chosenSrt}`)
+    await generateFcpxml(videoPath, chosenSrt, outPath, line => this.appendLog(id, line))
   }
 
   private async runEmbedSubtitles(

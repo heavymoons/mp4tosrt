@@ -15,6 +15,7 @@ export type JobPhase =
   | 'awaiting-prompt'
   | 'llm-correct'
   | 'embed'
+  | 'fcpxml'
   | 'done'
 
 export type Job = {
@@ -62,9 +63,13 @@ export type Settings = {
   replaceDictPath?: string
   outputDir?: string
   embedSubtitles: boolean
+  outputFcpxml: boolean
   suppressHallucinations: boolean
   hallucinationsListPath?: string
   llm: LlmSettings
+  // UI 表示言語。未定義なら起動時に navigator.language から自動判定する。
+  // 既存の `language` フィールドは Whisper の書き起こし言語なので別物。
+  uiLocale?: 'ja' | 'en'
 }
 
 export type LlmModelPreset = {

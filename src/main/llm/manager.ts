@@ -5,14 +5,22 @@ import type { LlmModelPreset, LlmDownloadProgress } from '../../shared/types'
 import { findPreset, presetFilename } from './presets'
 
 type LlamaInstance = unknown
-type LlamaSequence = { dispose?: () => void }
+type LlamaSequence = { dispose: () => void }
 type LlamaContext = {
   getSequence: () => LlamaSequence
   dispose?: () => void | Promise<void>
+  readonly sequencesLeft?: number
 }
 type LlamaModel = {
   dispose: () => Promise<void>
-  createContext: (opts: { contextSize: number }) => Promise<LlamaContext>
+  createContext: (opts: { contextSize: number; sequences?: number }) => Promise<LlamaContext>
+}
+type LlamaChatSessionInstance = {
+  prompt: (
+    text: string,
+    opts: { temperature: number; onTextChunk?: (chunk: string) => void }
+  ) => Promise<string>
+  dispose: (opts?: { disposeSequence?: boolean }) => void
 }
 
 let llamaInstance: LlamaInstance | undefined
@@ -21,6 +29,8 @@ let currentModelPath: string | undefined
 let contextInstance: LlamaContext | undefined
 let currentContextSize = 0
 let downloadingModelId: string | undefined
+
+const CONTEXT_SEQUENCES = 4
 
 type DownloadListener = (p: LlmDownloadProgress) => void
 const downloadListeners = new Set<DownloadListener>()
@@ -146,7 +156,10 @@ async function ensureContext(contextSize: number): Promise<LlamaContext> {
   if (!modelInstance) throw new Error('Model not loaded')
   if (contextInstance && currentContextSize === contextSize) return contextInstance
   await disposeContext()
-  contextInstance = await modelInstance.createContext({ contextSize })
+  contextInstance = await modelInstance.createContext({
+    contextSize,
+    sequences: CONTEXT_SEQUENCES
+  })
   currentContextSize = contextSize
   return contextInstance
 }
@@ -182,13 +195,18 @@ export async function generateCompletion(
 ): Promise<string> {
   if (!modelInstance) throw new Error('Model not loaded')
   const m = await loadLlamaCpp()
+  // コンテキストはモデルと同じ寿命で1度だけ作る (sequences プールあり)。
+  // バッチごとに createContext / dispose を繰り返すと llama-addon.node 内部で
+  // use-after-free を起こしてプロセスがクラッシュする (state_seq_get_data) ため、
+  // 長寿命コンテキストにして session 経由でシーケンスをやりくりする方式。
   const ctx = await ensureContext(contextSize)
   const sequence = ctx.getSequence()
+  let session: LlamaChatSessionInstance | undefined
   try {
-    const session = new m.LlamaChatSession({
+    session = new m.LlamaChatSession({
       contextSequence: sequence as never,
       systemPrompt
-    })
+    }) as unknown as LlamaChatSessionInstance
     const promptOpts: { temperature: number; onTextChunk?: (chunk: string) => void } = {
       temperature: 0.5
     }
@@ -196,7 +214,13 @@ export async function generateCompletion(
     const out = await session.prompt(userMessage, promptOpts)
     return out
   } finally {
-    try { sequence.dispose?.() } catch { /* ignore */ }
+    // session.dispose({ disposeSequence: true }) で session とシーケンスを
+    // セットで解放し、context の sequences プールに返却する。
+    if (session) {
+      try { session.dispose({ disposeSequence: true }) } catch { /* ignore */ }
+    } else {
+      try { sequence.dispose() } catch { /* ignore */ }
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
-import { Pipeline } from './pipeline'
+import { Pipeline, jobLogPath } from './pipeline'
 import type {
   Job,
   Settings as PipelineSettings,
@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS: PipelineSettings = {
   logprobThreshold: -1.5,
   wordTimestamps: true,
   embedSubtitles: false,
+  outputFcpxml: false,
   suppressHallucinations: true,
   llm: {
     enabled: false,
@@ -209,6 +210,10 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   })
 
   ipcMain.handle('jobs:list', (): Job[] => pipeline.list())
+
+  ipcMain.handle('jobs:openLog', (_e, id: string) => {
+    void shell.openPath(jobLogPath(id))
+  })
 
   ipcMain.handle('settings:get', (): PipelineSettings => settings)
 
