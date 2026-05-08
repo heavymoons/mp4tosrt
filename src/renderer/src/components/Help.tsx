@@ -13,13 +13,14 @@ type Props = {
 
 export default function Help({ onClose }: Props): JSX.Element {
   const t = useT()
+  const locale = useLocale()
   const html = useMemo(() => {
-    const raw = marked.parse(readmeRaw) as string
+    const raw = marked.parse(locale === 'en' ? readmeEn : readmeJa) as string
     return DOMPurify.sanitize(raw, {
       ADD_ATTR: ['target', 'rel'],
       USE_PROFILES: { html: true }
     })
-  }, [])
+  }, [locale])
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

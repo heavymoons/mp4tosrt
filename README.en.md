@@ -1,10 +1,10 @@
 # mp4tosrt
 
-A macOS app (Apple Silicon only) that generates **SRT subtitles** from video files automatically.
-
-It combines `ffmpeg` and `mlx-whisper` (a Whisper implementation optimized for Apple Silicon), runs multiple files in parallel, optionally corrects Japanese transcription errors with a local LLM, and can mux subtitles back into MP4 without re-encoding. Useful for video editors drafting on-screen captions and YouTubers preparing subtitle uploads.
+Transcribe MP4 videos in **Japanese and many other languages**, auto-correct the output with a **term dictionary and AI prompts (a local LLM)**, then export to **SRT subtitles / subtitled MP4 / Final Cut Pro `.fcpxml`** — all from a single drag-and-drop. **Completely free**. **Apple Silicon Mac only.**
 
 > 🇯🇵 日本語版の詳細は [README.md](README.md) を参照してください（用語辞書のテンプレート、ハルシネーション抑制パターン、LLM 校正のチューニング指針などフル収録）。
+
+Internally it combines `ffmpeg` and `mlx-whisper` (a Whisper implementation optimized for Apple Silicon), runs multiple files in parallel, optionally corrects transcription errors with a local LLM, and can mux subtitles back into MP4 without re-encoding. Useful for video editors drafting on-screen captions and YouTubers preparing subtitle uploads.
 
 ## Features
 
