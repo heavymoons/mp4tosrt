@@ -1,7 +1,8 @@
 import { spawn, ChildProcess } from 'child_process'
-import { promises as fs } from 'fs'
+import { promises as fs, createWriteStream, type WriteStream } from 'fs'
 import { tmpdir } from 'os'
 import { basename, extname, join } from 'path'
+import { app } from 'electron'
 import { Semaphore } from './queue'
 import { applyDictionaryToFile, loadReplaceRules } from './replace'
 import { applyHallucinationSuppression } from './suppress'
@@ -12,7 +13,11 @@ import type { Job, Settings as PipelineSettings, AudioFilters } from '../shared/
 
 export type { Job, PipelineSettings }
 
-const MAX_LOG_LINES = 500
+const MAX_LOG_LINES = 2000
+
+export function jobLogPath(id: string): string {
+  return join(app.getPath('userData'), 'logs', `${id}.log`)
+}
 
 type Listener = (job: Job) => void
 
@@ -26,6 +31,7 @@ export class Pipeline {
   private listeners = new Set<Listener>()
   private settings: PipelineSettings
   private logEmitTimers = new Map<string, NodeJS.Timeout>()
+  private logStreams = new Map<string, WriteStream>()
 
   constructor(settings: PipelineSettings) {
     this.settings = settings
@@ -217,12 +223,16 @@ export class Pipeline {
     this.cancel(id)
     this.jobs.delete(id)
     this.procs.delete(id)
+    this.closeLogStream(id)
+    fs.unlink(jobLogPath(id)).catch(() => undefined)
   }
 
   clearFinished(): void {
     for (const [id, job] of [...this.jobs]) {
       if (job.status === 'done' || job.status === 'error' || job.status === 'cancelled') {
         this.jobs.delete(id)
+        this.closeLogStream(id)
+        fs.unlink(jobLogPath(id)).catch(() => undefined)
       }
     }
   }
@@ -249,7 +259,42 @@ export class Pipeline {
     if (!j) return
     j.log.push(line)
     if (j.log.length > MAX_LOG_LINES) j.log.splice(0, j.log.length - MAX_LOG_LINES)
+    this.writeLogToDisk(id, line)
     this.scheduleLogEmit(id)
+  }
+
+  private writeLogToDisk(id: string, line: string): void {
+    let stream = this.logStreams.get(id)
+    if (!stream) {
+      try {
+        const path = jobLogPath(id)
+        // ensure dir
+        const dir = join(app.getPath('userData'), 'logs')
+        // mkdir sync via Node fs to keep this method sync
+        // (small one-time cost when stream is first created)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        require('fs').mkdirSync(dir, { recursive: true })
+        const ts = new Date().toISOString()
+        stream = createWriteStream(path, { flags: 'a' })
+        stream.write(`\n=== job ${id} log opened at ${ts} ===\n`)
+        this.logStreams.set(id, stream)
+      } catch {
+        return
+      }
+    }
+    try {
+      stream.write(line + '\n')
+    } catch {
+      /* ignore disk write errors */
+    }
+  }
+
+  private closeLogStream(id: string): void {
+    const stream = this.logStreams.get(id)
+    if (stream) {
+      try { stream.end() } catch { /* ignore */ }
+      this.logStreams.delete(id)
+    }
   }
 
   private scheduleLogEmit(id: string): void {
@@ -568,7 +613,13 @@ export class Pipeline {
     const job = this.jobs.get(id)
     const llm = this.settings.llm
     this.appendLog(id, `[llm] loading model ${llm.modelId}…`)
-    await ensureModelLoaded(llm.modelId, llm.contextSize)
+    try {
+      await ensureModelLoaded(llm.modelId, llm.contextSize)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      const enriched = `${msg}\n\nヒント: node-llama-cpp が現在のモデルアーキテクチャに対応していない可能性があります（Gemma 4 等の最新モデルは未対応のことがあります）。設定の「モデル」を Qwen3.5 4B Q4 などに切り替えて再試行してください。`
+      throw new Error(enriched)
+    }
     this.appendLog(id, `[llm] model ready`)
 
     const text = await fs.readFile(srtPath, 'utf-8')

@@ -290,15 +290,12 @@ YouTube 動画でほぼ確実にハルシネーションと判別できるもの
 | Qwen3.5 4B Q5_K_M | 約 3GB | 4B でやや高品質 |
 | Qwen3.5 9B Q4_K_M | 約 5.5GB | より高精度、固有名詞補正が強い |
 | Qwen3.5 9B Q5_K_M | 約 6.5GB | 9B でさらに高品質 |
-| Gemma 4 E2B Q4_K_M | 約 1.5GB | Google系、軽量・高速 |
-| Gemma 4 E2B Q5_K_M | 約 1.8GB | Gemma 軽量・やや高品質 |
-| Gemma 4 E4B Q4_K_M | 約 2.5GB | Google系、Qwen3.5 4B と比較対象 |
-| Gemma 4 E4B Q5_K_M | 約 3GB | Gemma E4B やや高品質 |
 
 **選び方の目安:**
-- 16GB Mac → Qwen3.5 4B / Gemma 4 E4B（4Bクラス）
+- 16GB Mac → Qwen3.5 4B
 - 32GB+ Mac → Qwen3.5 9B（より高精度）
-- 日本語の固有名詞補正は **Qwen 系がやや強い** 印象（個人観測）。気になる人は Gemma との A/B 比較を
+
+> Gemma 4 は node-llama-cpp が未対応のため一時的に外しています（#9）。対応次第プリセットに戻します。
 
 #### 共通プロンプト
 

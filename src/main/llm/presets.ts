@@ -24,31 +24,9 @@ export const LLM_MODEL_PRESETS: LlmModelPreset[] = [
     label: 'Qwen3.5 9B Q5_K_M (高品質・約6.5GB)',
     uri: 'hf:unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q5_K_M.gguf',
     approxSizeMB: 6500
-  },
-  {
-    id: 'gemma4-e2b-q4',
-    label: 'Gemma 4 E2B Q4_K_M (軽量・約1.5GB)',
-    uri: 'hf:unsloth/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q4_K_M.gguf',
-    approxSizeMB: 1500
-  },
-  {
-    id: 'gemma4-e2b-q5',
-    label: 'Gemma 4 E2B Q5_K_M (軽量・約1.8GB)',
-    uri: 'hf:unsloth/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q5_K_M.gguf',
-    approxSizeMB: 1800
-  },
-  {
-    id: 'gemma4-e4b-q4',
-    label: 'Gemma 4 E4B Q4_K_M (約2.5GB)',
-    uri: 'hf:unsloth/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf',
-    approxSizeMB: 2500
-  },
-  {
-    id: 'gemma4-e4b-q5',
-    label: 'Gemma 4 E4B Q5_K_M (高品質・約3GB)',
-    uri: 'hf:unsloth/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q5_K_M.gguf',
-    approxSizeMB: 3000
   }
+  // Gemma 4 系は node-llama-cpp 3.18.1 では "Failed to load model" になるので
+  // 一時撤去 (llama.cpp 側で対応 → node-llama-cpp に反映待ち。詳細は Issue 参照)
 ]
 
 export function findPreset(id: string): LlmModelPreset | undefined {
