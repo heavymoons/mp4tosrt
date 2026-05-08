@@ -1,4 +1,11 @@
 import React, { useEffect, useState } from 'react'
+
+let mediaPortCache: number | null = null
+async function getMediaPort(): Promise<number> {
+  if (mediaPortCache !== null) return mediaPortCache
+  mediaPortCache = await window.api.mediaServerPort()
+  return mediaPortCache
+}
 import type { Job } from '../../../shared/types'
 
 const STATUS_LABEL: Record<Job['status'], string> = {
@@ -45,6 +52,16 @@ function JobItem({
   const [showLog, setShowLog] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!showPreview) return
+    void getMediaPort().then(port => {
+      if (port > 0) {
+        setPreviewUrl(`http://127.0.0.1:${port}/job/${encodeURIComponent(job.id)}`)
+      }
+    })
+  }, [showPreview, job.id])
   const [showPrompt, setShowPrompt] = useState<boolean>(Boolean(job.extraPrompt) || isAwaiting)
   const [promptDraft, setPromptDraft] = useState<string>(job.extraPrompt ?? '')
   const [composingPrompt, setComposingPrompt] = useState(false)
@@ -194,14 +211,13 @@ function JobItem({
       <div className="job-progress">
         <div className="bar" style={{ width: `${job.progress}%` }} />
       </div>
-      {showPreview && (
+      {showPreview && previewUrl && (
         <div className="job-preview-wrap">
           <video
             className="job-preview-video"
             controls
             preload="metadata"
-            crossOrigin="anonymous"
-            src={`mp4tosrt-video://job/${encodeURIComponent(job.id)}`}
+            src={previewUrl}
             onError={e => {
               const err = (e.currentTarget as HTMLVideoElement).error
               const code = err?.code

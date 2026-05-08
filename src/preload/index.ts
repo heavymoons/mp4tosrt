@@ -29,6 +29,7 @@ const api = {
     ipcRenderer.invoke('jobs:rerunFromLlm', id),
   rerunJobEmbed: (id: string): Promise<void> =>
     ipcRenderer.invoke('jobs:rerunEmbed', id),
+  mediaServerPort: (): Promise<number> => ipcRenderer.invoke('media:port'),
   cancelJob: (id: string): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   removeJob: (id: string): Promise<void> => ipcRenderer.invoke('jobs:remove', id),
   clearFinished: (): Promise<void> => ipcRenderer.invoke('jobs:clearFinished'),

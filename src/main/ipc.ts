@@ -30,6 +30,7 @@ import {
   type UserFileKind
 } from './userFiles'
 import { registerVideoProtocol } from './preview'
+import { startMediaServer, getMediaServerPort } from './mediaServer'
 
 const DEFAULT_SETTINGS: PipelineSettings = {
   model: 'mlx-community/whisper-large-v3-turbo',
@@ -70,6 +71,13 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   if (settings.hallucinationsListPath) registerDialogPath(settings.hallucinationsListPath)
   const pipeline = new Pipeline(settings)
   registerVideoProtocol(pipeline)
+  // 動画プレビュー用のローカル HTTP サーバ（custom protocol が
+  // packaged 環境で format error になる対策）
+  try {
+    await startMediaServer(pipeline)
+  } catch (e) {
+    console.error('failed to start media server', e)
+  }
 
 
   let jobsSaveTimer: NodeJS.Timeout | undefined
@@ -238,6 +246,8 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   ipcMain.handle('llm:unload', async () => {
     await unloadModel()
   })
+
+  ipcMain.handle('media:port', () => getMediaServerPort())
 
   ipcMain.handle('userFile:defaultPath', (_e, kind: UserFileKind) => defaultFilePath(kind))
 
