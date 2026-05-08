@@ -5,12 +5,21 @@ import type { LlmModelPreset, LlmDownloadProgress } from '../../shared/types'
 import { findPreset, presetFilename } from './presets'
 
 type LlamaInstance = unknown
-type LlamaModel = { dispose: () => Promise<void>; createContext: (opts: { contextSize: number }) => Promise<LlamaContext> }
-type LlamaContext = { getSequence: () => unknown; dispose?: () => void }
+type LlamaSequence = { dispose?: () => void }
+type LlamaContext = {
+  getSequence: () => LlamaSequence
+  dispose?: () => void | Promise<void>
+}
+type LlamaModel = {
+  dispose: () => Promise<void>
+  createContext: (opts: { contextSize: number }) => Promise<LlamaContext>
+}
 
 let llamaInstance: LlamaInstance | undefined
 let modelInstance: LlamaModel | undefined
 let currentModelPath: string | undefined
+let contextInstance: LlamaContext | undefined
+let currentContextSize = 0
 let downloadingModelId: string | undefined
 
 type DownloadListener = (p: LlmDownloadProgress) => void
@@ -123,6 +132,25 @@ export async function downloadModel(modelId: string): Promise<string> {
   }
 }
 
+async function disposeContext(): Promise<void> {
+  if (!contextInstance) return
+  try {
+    const r = contextInstance.dispose?.()
+    if (r && typeof (r as Promise<void>).then === 'function') await r
+  } catch { /* ignore */ }
+  contextInstance = undefined
+  currentContextSize = 0
+}
+
+async function ensureContext(contextSize: number): Promise<LlamaContext> {
+  if (!modelInstance) throw new Error('Model not loaded')
+  if (contextInstance && currentContextSize === contextSize) return contextInstance
+  await disposeContext()
+  contextInstance = await modelInstance.createContext({ contextSize })
+  currentContextSize = contextSize
+  return contextInstance
+}
+
 export async function ensureModelLoaded(modelId: string, _contextSize: number): Promise<void> {
   const preset = findPreset(modelId)
   if (!preset) throw new Error(`Unknown model preset: ${modelId}`)
@@ -131,6 +159,7 @@ export async function ensureModelLoaded(modelId: string, _contextSize: number): 
     path = await downloadModel(modelId)
   }
   if (currentModelPath === path && modelInstance) return
+  await disposeContext()
   if (modelInstance) {
     try { await modelInstance.dispose() } catch { /* ignore */ }
     modelInstance = undefined
@@ -153,10 +182,11 @@ export async function generateCompletion(
 ): Promise<string> {
   if (!modelInstance) throw new Error('Model not loaded')
   const m = await loadLlamaCpp()
-  const ctx = await modelInstance.createContext({ contextSize })
+  const ctx = await ensureContext(contextSize)
+  const sequence = ctx.getSequence()
   try {
     const session = new m.LlamaChatSession({
-      contextSequence: ctx.getSequence() as never,
+      contextSequence: sequence as never,
       systemPrompt
     })
     const promptOpts: { temperature: number; onTextChunk?: (chunk: string) => void } = {
@@ -166,11 +196,12 @@ export async function generateCompletion(
     const out = await session.prompt(userMessage, promptOpts)
     return out
   } finally {
-    try { ctx.dispose?.() } catch { /* ignore */ }
+    try { sequence.dispose?.() } catch { /* ignore */ }
   }
 }
 
 export async function unloadModel(): Promise<void> {
+  await disposeContext()
   if (modelInstance) {
     try { await modelInstance.dispose() } catch { /* ignore */ }
     modelInstance = undefined

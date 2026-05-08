@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import readmeRaw from '../../../../README.md?raw'
 
 marked.setOptions({ gfm: true, breaks: false })
@@ -9,7 +10,13 @@ type Props = {
 }
 
 export default function Help({ onClose }: Props): JSX.Element {
-  const html = useMemo(() => marked.parse(readmeRaw) as string, [])
+  const html = useMemo(() => {
+    const raw = marked.parse(readmeRaw) as string
+    return DOMPurify.sanitize(raw, {
+      ADD_ATTR: ['target', 'rel'],
+      USE_PROFILES: { html: true }
+    })
+  }, [])
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
