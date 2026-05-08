@@ -39,12 +39,28 @@ export function registerVideoProtocol(pipeline: Pipeline): void {
   protocol.handle(VIDEO_SCHEME, async request => {
     try {
       const url = new URL(request.url)
-      const jobId = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+      // pathname は host を含まないので、host 部分にあたる "job" を捨てて
+      // url.pathname だけ使う場合は注意。今は host=job を前提とせず、
+      // hostname または pathname に jobId が入る両ケースを許容する。
+      let jobId = ''
+      // url.host は scheme://HOST/path の HOST 部分
+      // mp4tosrt-video://job/<id> の場合、host="job", pathname="/<id>"
+      // mp4tosrt-video://<id> の場合、host="<id>", pathname="/" or ""
+      if (url.pathname && url.pathname !== '/') {
+        jobId = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+      } else if (url.host) {
+        jobId = decodeURIComponent(url.host)
+      }
+
+      console.log(`[video protocol] request url=${request.url} jobId=${jobId}`)
+
       if (!jobId) {
+        console.warn('[video protocol] empty jobId')
         return new Response('jobId required', { status: 400 })
       }
       const job = pipeline.getJob(jobId)
       if (!job) {
+        console.warn(`[video protocol] job not found: ${jobId}`)
         return new Response(`job ${jobId} not found`, { status: 404 })
       }
 
@@ -52,6 +68,7 @@ export function registerVideoProtocol(pipeline: Pipeline): void {
       const stat = await fs.stat(filePath)
       const total = stat.size
       const mimeType = mimeFor(filePath)
+      console.log(`[video protocol] serving ${filePath} (${total} bytes, ${mimeType})`)
 
       const rangeHeader = request.headers.get('range')
       if (rangeHeader) {
@@ -74,7 +91,8 @@ export function registerVideoProtocol(pipeline: Pipeline): void {
               'Content-Length': String(length),
               'Content-Range': `bytes ${start}-${end}/${total}`,
               'Accept-Ranges': 'bytes',
-              'Cache-Control': 'no-cache'
+              'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*'
             }
           })
         }

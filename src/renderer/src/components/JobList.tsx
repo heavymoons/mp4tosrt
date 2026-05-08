@@ -188,6 +188,7 @@ function JobItem({
           className="job-preview-video"
           controls
           preload="metadata"
+          crossOrigin="anonymous"
           src={`mp4tosrt-video://job/${encodeURIComponent(job.id)}`}
         />
       )}

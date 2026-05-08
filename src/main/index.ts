@@ -6,15 +6,18 @@ import { ensurePathEnv } from './tools'
 ensurePathEnv()
 
 // 動画プレビュー用の独自スキーム。app.ready 前に privileged 登録が必要。
+// production の file:// レンダラから <video src="mp4tosrt-video://..."> を
+// 読めるよう、CORS / streaming に関する privilege を全部付ける。
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'mp4tosrt-video',
     privileges: {
-      bypassCSP: true,
       stream: true,
-      supportFetchAPI: true,
+      bypassCSP: true,
       standard: true,
-      secure: true
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true
     }
   }
 ])
