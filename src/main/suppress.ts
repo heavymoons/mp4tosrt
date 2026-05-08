@@ -24,7 +24,9 @@ function normalize(text: string): string {
 
 export function isHallucination(cueText: string, patterns: string[]): boolean {
   const t = normalize(cueText)
-  if (!t) return false
+  // 正規化後（句読点・記号・空白を取り除いた状態）が空のキューは
+  // 「！！！」「...」「？？？」のような Whisper の無意味な吐き出しとみなして削除。
+  if (!t) return true
   for (const p of patterns) {
     const np = normalize(p)
     if (!np) continue

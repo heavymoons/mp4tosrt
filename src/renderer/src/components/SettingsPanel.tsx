@@ -193,7 +193,25 @@ export default function SettingsPanel({
                   onChange={e => onChange({ conditionOnPreviousText: e.target.checked })}
                 />
                 <span>
-                  前文脈を考慮 <span className="muted small">(長尺で文脈ドリフトする時はオフ推奨)</span>
+                  前のキューを参考にする
+                  <span className="muted small">
+                    {' '}
+                    (ON にすると、前のキューの誤認識を引きずって「！」連発などの暴走を起こしやすいのでデフォ OFF)
+                  </span>
+                </span>
+              </label>
+
+              <label className="checkbox full">
+                <input
+                  type="checkbox"
+                  checked={settings.wordTimestamps}
+                  onChange={e => onChange({ wordTimestamps: e.target.checked })}
+                />
+                <span>
+                  単語タイムスタンプを使う
+                  <span className="muted small">
+                    {' '}(クロスアテンションで字幕の開始時刻を発話開始に合わせる、推論時間+10%程度)
+                  </span>
                 </span>
               </label>
 

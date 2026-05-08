@@ -453,6 +453,9 @@ export class Pipeline {
         '--no-speech-threshold', String(this.settings.noSpeechThreshold),
         '--logprob-threshold', String(this.settings.logprobThreshold)
       ]
+      if (this.settings.wordTimestamps) {
+        args.push('--word-timestamps', 'True')
+      }
       if (this.settings.language) {
         args.push('--language', this.settings.language)
       }

@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS: PipelineSettings = {
   conditionOnPreviousText: false,
   noSpeechThreshold: 0.3,
   logprobThreshold: -1.5,
+  wordTimestamps: true,
   embedSubtitles: false,
   suppressHallucinations: true,
   llm: {

@@ -57,6 +57,7 @@ export type Settings = {
   conditionOnPreviousText: boolean
   noSpeechThreshold: number
   logprobThreshold: number
+  wordTimestamps: boolean
   language?: string
   replaceDictPath?: string
   outputDir?: string
