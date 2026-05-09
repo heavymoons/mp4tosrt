@@ -48,6 +48,15 @@ const DEFAULT_SETTINGS: PipelineSettings = {
   wordTimestamps: true,
   embedSubtitles: false,
   outputFcpxml: false,
+  fcpxmlSubtitle: {
+    mode: 'title',
+    alignment: 'center',
+    verticalAnchor: 'bottom',
+    // CJK のグリフを持つ macOS システムフォント。Helvetica 系だと日本語が
+    // フォント解決失敗で fill が描画されない場合がある。
+    font: '.AppleSystemUIFont',
+    fontSize: 60
+  },
   suppressHallucinations: true,
   llm: {
     enabled: false,
@@ -281,6 +290,9 @@ function mergeSettings(
     audioFilters: patch.audioFilters
       ? { ...base.audioFilters, ...patch.audioFilters }
       : base.audioFilters,
+    fcpxmlSubtitle: patch.fcpxmlSubtitle
+      ? { ...base.fcpxmlSubtitle, ...patch.fcpxmlSubtitle }
+      : base.fcpxmlSubtitle,
     llm: patch.llm ? { ...base.llm, ...patch.llm } : base.llm
   }
 }

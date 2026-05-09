@@ -592,7 +592,13 @@ export class Pipeline {
     const stem = basename(videoPath, extname(videoPath))
     const outPath = join(outDir, `${stem}.fcpxml`)
     this.appendLog(id, `[fcpxml] using ${chosenSrt}`)
-    await generateFcpxml(videoPath, chosenSrt, outPath, line => this.appendLog(id, line))
+    await generateFcpxml(
+      videoPath,
+      chosenSrt,
+      outPath,
+      this.settings.fcpxmlSubtitle,
+      line => this.appendLog(id, line)
+    )
   }
 
   private async runEmbedSubtitles(

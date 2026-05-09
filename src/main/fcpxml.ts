@@ -4,6 +4,7 @@ import { basename, extname } from 'path'
 import { pathToFileURL } from 'url'
 import { createHash } from 'crypto'
 import { parseSrt, type SrtCue } from './srt'
+import type { FcpxmlSubtitleStyle } from '../shared/types'
 
 type ProbeResult = {
   durationSec: number
@@ -206,10 +207,61 @@ function buildCaption(
 `
 }
 
+function buildTitle(
+  cue: SrtCue,
+  index: number,
+  fpsNum: number,
+  fpsDen: number,
+  sourceStartSec: number,
+  style: FcpxmlSubtitleStyle
+): string {
+  const cueStart = srtTimeToSeconds(cue.start)
+  const cueEnd = srtTimeToSeconds(cue.end)
+  const minDur = fpsDen / fpsNum
+  const dur = Math.max(cueEnd - cueStart, minDur)
+  const text = escapeXml(cue.text.replace(/\s*\n\s*/g, ' ').trim())
+  if (!text) return ''
+  const styleId = `ts${index}`
+  const offsetInSource = sourceStartSec + cueStart
+  const titleName = text.length > 50 ? text.slice(0, 50) : text
+  // adjust-transform position の単位は内部的に canvas_height/100 倍されるスケールなので、
+  // 1080p で -360px (下 1/3) を出したいなら XML 上は -33 程度 (= -360 / 10.8) が必要。
+  // 解像度に対して相対的な値になるので resolution-independent にしてある。
+  const yOffset =
+    style.verticalAnchor === 'top'
+      ? 33
+      : style.verticalAnchor === 'middle'
+        ? 0
+        : -33
+  const font = escapeXml(style.font || 'Helvetica')
+  const fontSize = Math.max(8, Math.round(style.fontSize || 60))
+  const align = style.alignment === 'left' || style.alignment === 'right' ? style.alignment : 'center'
+  // FCPX が export する Basic Title をそのまま再現する形。
+  // - <param> は Basic Title.moti の内部パラメータ。"カラー" key は Face Color。
+  //   これを書かないと template 既定値が使われ、text-style/@fontColor が反映されないことがある。
+  // - strokeWidth は **負の値** にする。正値だとグリフ内側にストロークが描かれて
+  //   fill を侵食 → 「アウトラインだけ見える」現象になる。負値で外側ストローク。
+  // - DTD 子要素順: param* , text* , text-style-def* , note? , adjust-* , ...
+  return `              <title ref="r3" lane="1" offset="${secondsToFcpTime(offsetInSource, fpsNum, fpsDen)}" name="${titleName}" start="3600s" duration="${secondsToFcpTime(dur, fpsNum, fpsDen)}">
+                <param name="Flatten" key="9999/999166631/999166633/2/351" value="1"/>
+                <param name="Color" key="9999/999166631/999166633/5/999166635/14/16" value="1 1 1"/>
+                <param name="Wrap Mode" key="9999/999166631/999166633/5/999166635/14/18/5" value="1"/>
+                <text>
+                  <text-style ref="${styleId}">${text}</text-style>
+                </text>
+                <text-style-def id="${styleId}">
+                  <text-style font="${font}" fontSize="${fontSize}" fontFace="Regular" fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-2" alignment="${align}"/>
+                </text-style-def>
+                <adjust-transform position="0 ${yOffset}"/>
+              </title>
+`
+}
+
 export async function generateFcpxml(
   videoPath: string,
   srtPath: string,
   outputPath: string,
+  style: FcpxmlSubtitleStyle,
   log: (s: string) => void
 ): Promise<void> {
   log('[fcpxml] probing video metadata')
@@ -257,12 +309,26 @@ export async function generateFcpxml(
     : '0s'
   const sourceStartSec = (probe.sourceTcFrames * probe.fpsDen) / probe.fpsNum
 
-  let captionsXml = ''
+  const useTitle = style.mode === 'title'
+
+  let subtitlesXml = ''
   let i = 0
   for (const cue of cues) {
-    const c = buildCaption(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec)
-    if (c) captionsXml += c
+    const c = useTitle
+      ? buildTitle(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec, style)
+      : buildCaption(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec)
+    if (c) subtitlesXml += c
   }
+
+  // mode='title' のときだけ Basic Title 効果リソースを resources に出す。
+  // FCPX バンドル内の Motion テンプレへの相対 uid (...で始まる) は portable。
+  // 実体パス: /Applications/Final Cut Pro.app/Contents/PlugIns/MediaProviders/
+  //   MotionEffect.fxp/Contents/Resources/PETemplates.localized/Titles.localized/
+  //   Bumper:Opener.localized/Basic Title.localized/Basic Title.moti
+  const titleEffect = useTitle
+    ? `    <effect id="r3" name="Basic Title" uid=".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"/>
+`
+    : ''
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
@@ -272,14 +338,14 @@ export async function generateFcpxml(
     <asset id="r2" name="${escapeXml(videoName)}" uid="${uid}" start="${sourceStart}" duration="${totalDur}" hasVideo="1" format="r1" hasAudio="1" videoSources="1" audioSources="1" audioChannels="${probe.audioChannels}" audioRate="${probe.audioSampleRate}">
       <media-rep kind="original-media" sig="${uid}" src="${escapeXml(videoUrl)}"/>
     </asset>
-  </resources>
+${titleEffect}  </resources>
   <library>
     <event name="mp4tosrt">
       <project name="${escapeXml(videoName)}">
         <sequence format="r1" duration="${totalDur}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="${seqAudioRate}">
           <spine>
             <asset-clip ref="r2" offset="0s" name="${escapeXml(videoName)}" start="${sourceStart}" duration="${totalDur}" tcFormat="NDF" audioRole="dialogue">
-${captionsXml}            </asset-clip>
+${subtitlesXml}            </asset-clip>
           </spine>
         </sequence>
       </project>
@@ -289,5 +355,13 @@ ${captionsXml}            </asset-clip>
 `
 
   await fs.writeFile(outputPath, xml, 'utf-8')
-  log(`[fcpxml] wrote ${cues.length} captions to ${outputPath}`)
+  log(
+    `[fcpxml] wrote ${cues.length} ${useTitle ? 'titles' : 'captions'} ` +
+      `(mode=${style.mode}` +
+      (useTitle
+        ? `, font=${style.font}, size=${style.fontSize}, ` +
+          `align=${style.alignment}, vertical=${style.verticalAnchor}`
+        : '') +
+      `) to ${outputPath}`
+  )
 }

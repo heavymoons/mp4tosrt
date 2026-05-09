@@ -40,6 +40,21 @@ export type AudioFilters = {
   compress: boolean
 }
 
+export type FcpxmlSubtitleStyle = {
+  // caption: SRT キャプション (FCPX のキャプショントラックに乗る、編集しづらいが SRT 互換)
+  // title:   通常のテキストタイトル (Basic Title 効果ベース、編集しやすい)
+  mode: 'caption' | 'title'
+  // 以下は mode='title' 時のみ意味を持つ
+  // テキスト内の左右揃え (FCPX text-style/@alignment)
+  alignment: 'left' | 'center' | 'right'
+  // 画面上の上下位置 (adjust-transform で y を ±videoHeight/3 / 0 にオフセット)
+  verticalAnchor: 'top' | 'middle' | 'bottom'
+  // フォント名 (FCPX text-style/@font)。例: "Helvetica", "Hiragino Sans", "Noto Sans JP"
+  font: string
+  // フォントサイズ (pt)
+  fontSize: number
+}
+
 export type LlmSettings = {
   enabled: boolean
   modelId: string
@@ -64,6 +79,7 @@ export type Settings = {
   outputDir?: string
   embedSubtitles: boolean
   outputFcpxml: boolean
+  fcpxmlSubtitle: FcpxmlSubtitleStyle
   suppressHallucinations: boolean
   hallucinationsListPath?: string
   llm: LlmSettings

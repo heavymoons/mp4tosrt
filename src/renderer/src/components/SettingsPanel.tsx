@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { Settings, AudioFilters } from '../../../shared/types'
+import type { Settings, AudioFilters, FcpxmlSubtitleStyle } from '../../../shared/types'
 import LlmPanel from './LlmPanel'
 import FileEditor from './FileEditor'
 import { useT } from '../i18n'
@@ -49,6 +49,10 @@ export default function SettingsPanel({
     onChange({ audioFilters: { ...settings.audioFilters, ...patch } })
   }
 
+  const setFcpxmlStyle = (patch: Partial<FcpxmlSubtitleStyle>): void => {
+    onChange({ fcpxmlSubtitle: { ...settings.fcpxmlSubtitle, ...patch } })
+  }
+
   return (
     <section className="card">
       <div className="card-head">
@@ -65,30 +69,6 @@ export default function SettingsPanel({
             <input readOnly value={settings.outputDir || t('settings.outputDir.empty')} />
             <button onClick={onPickOutputDir}>{t('settings.outputDir.change')}</button>
           </div>
-        </label>
-
-        <label className="checkbox full">
-          <input
-            type="checkbox"
-            checked={settings.embedSubtitles}
-            onChange={e => onChange({ embedSubtitles: e.target.checked })}
-          />
-          <span>
-            {t('settings.embedSubtitles.main')}
-            <span className="muted small"> {t('settings.embedSubtitles.hint')}</span>
-          </span>
-        </label>
-
-        <label className="checkbox full">
-          <input
-            type="checkbox"
-            checked={settings.outputFcpxml}
-            onChange={e => onChange({ outputFcpxml: e.target.checked })}
-          />
-          <span>
-            {t('settings.outputFcpxml.main')}
-            <span className="muted small"> {t('settings.outputFcpxml.hint')}</span>
-          </span>
         </label>
 
         <label>
@@ -142,7 +122,120 @@ export default function SettingsPanel({
             }
           />
         </label>
+
+        <label className="checkbox full">
+          <input
+            type="checkbox"
+            checked={settings.embedSubtitles}
+            onChange={e => onChange({ embedSubtitles: e.target.checked })}
+          />
+          <span>
+            {t('settings.embedSubtitles.main')}
+            <span className="muted small"> {t('settings.embedSubtitles.hint')}</span>
+          </span>
+        </label>
+
+        <label className="checkbox full">
+          <input
+            type="checkbox"
+            checked={settings.outputFcpxml}
+            onChange={e => onChange({ outputFcpxml: e.target.checked })}
+          />
+          <span>
+            {t('settings.outputFcpxml.main')}
+            <span className="muted small"> {t('settings.outputFcpxml.hint')}</span>
+          </span>
+        </label>
       </div>
+
+      {settings.outputFcpxml && (
+        <div className="settings-section">
+          <div className="settings-section-head">
+            <span>{t('settings.fcpxml.section')}</span>
+            <span className="muted small">{t('settings.fcpxml.section.hint')}</span>
+          </div>
+          <div className="settings-grid">
+            <label className="full">
+              {t('settings.fcpxml.mode')}
+              <select
+                value={settings.fcpxmlSubtitle.mode}
+                onChange={e =>
+                  setFcpxmlStyle({ mode: e.target.value as FcpxmlSubtitleStyle['mode'] })
+                }
+              >
+                <option value="title">{t('settings.fcpxml.mode.title')}</option>
+                <option value="caption">{t('settings.fcpxml.mode.caption')}</option>
+              </select>
+              <span className="muted small">
+                {settings.fcpxmlSubtitle.mode === 'title'
+                  ? t('settings.fcpxml.mode.titleHint')
+                  : t('settings.fcpxml.mode.captionHint')}
+              </span>
+            </label>
+
+            {settings.fcpxmlSubtitle.mode === 'title' && (
+              <>
+                <label>
+                  {t('settings.fcpxml.alignment')}
+                  <select
+                    value={settings.fcpxmlSubtitle.alignment}
+                    onChange={e =>
+                      setFcpxmlStyle({
+                        alignment: e.target.value as FcpxmlSubtitleStyle['alignment']
+                      })
+                    }
+                  >
+                    <option value="left">{t('settings.fcpxml.align.left')}</option>
+                    <option value="center">{t('settings.fcpxml.align.center')}</option>
+                    <option value="right">{t('settings.fcpxml.align.right')}</option>
+                  </select>
+                </label>
+
+                <label>
+                  {t('settings.fcpxml.verticalAnchor')}
+                  <select
+                    value={settings.fcpxmlSubtitle.verticalAnchor}
+                    onChange={e =>
+                      setFcpxmlStyle({
+                        verticalAnchor: e.target.value as FcpxmlSubtitleStyle['verticalAnchor']
+                      })
+                    }
+                  >
+                    <option value="top">{t('settings.fcpxml.vertical.top')}</option>
+                    <option value="middle">{t('settings.fcpxml.vertical.middle')}</option>
+                    <option value="bottom">{t('settings.fcpxml.vertical.bottom')}</option>
+                  </select>
+                </label>
+
+                <label>
+                  {t('settings.fcpxml.font')}
+                  <input
+                    type="text"
+                    value={settings.fcpxmlSubtitle.font}
+                    onChange={e => setFcpxmlStyle({ font: e.target.value })}
+                    placeholder="Helvetica"
+                  />
+                </label>
+
+                <label>
+                  {t('settings.fcpxml.fontSize')}
+                  <input
+                    type="number"
+                    min={8}
+                    max={300}
+                    value={settings.fcpxmlSubtitle.fontSize}
+                    onChange={e =>
+                      setFcpxmlStyle({
+                        fontSize: clamp(parseInt(e.target.value) || 60, 8, 300)
+                      })
+                    }
+                  />
+                </label>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showAdvanced && (
         <>
