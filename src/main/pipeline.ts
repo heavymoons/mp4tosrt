@@ -693,6 +693,9 @@ export class Pipeline {
     const corrected = await correctCues(cues, {
       batchSize: llm.batchSize,
       contextSize: llm.contextSize,
+      batchOverlap: llm.batchOverlap,
+      allowMerge: llm.allowMerge,
+      maxMergeSize: llm.maxMergeSize,
       glossary,
       extraPrompt: combinedPrompt,
       log: line => this.appendLog(id, line),

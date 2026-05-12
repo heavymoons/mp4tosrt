@@ -65,7 +65,10 @@ const DEFAULT_SETTINGS: PipelineSettings = {
     contextSize: 4096,
     useDictionary: true,
     requirePrompt: true,
-    sharedPrompt: ''
+    sharedPrompt: '',
+    batchOverlap: 20,
+    allowMerge: true,
+    maxMergeSize: 3
   }
 }
 

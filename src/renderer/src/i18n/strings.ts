@@ -127,6 +127,14 @@ export const EN = {
   'llm.batchSize': 'Batch size',
   'llm.batchSize.hint': '(cues per request)',
   'llm.contextSize': 'Context size',
+  'llm.batchOverlap': 'Batch overlap',
+  'llm.batchOverlap.hint':
+    '(cues that overlap between consecutive batches, for context continuity at boundaries)',
+  'llm.allowMerge': 'Merge adjacent cues by context',
+  'llm.allowMerge.hint':
+    '(let the LLM join "tomorrow is" + "sunny" into one cue when natural)',
+  'llm.maxMergeSize': 'Max cues per merge',
+  'llm.maxMergeSize.hint': '(upper bound on how many cues can be combined)',
   'llm.useDictionary': 'Pass term dictionary to prompt',
   'llm.useDictionary.hint.enabled': '(can correct proper nouns in context)',
   'llm.useDictionary.hint.disabled': '(configure the term dictionary file above to enable)',
@@ -344,6 +352,13 @@ export const JA: Messages = {
   'llm.batchSize': 'バッチサイズ',
   'llm.batchSize.hint': '(1回のリクエストで送るキュー数)',
   'llm.contextSize': 'コンテキストサイズ',
+  'llm.batchOverlap': 'バッチ重複',
+  'llm.batchOverlap.hint': '(連続する2バッチで重ねる cue 数。境界の文脈を橋渡しする用)',
+  'llm.allowMerge': '文脈に応じてキューをマージする',
+  'llm.allowMerge.hint':
+    '(例: 「明日は」+「晴れです」が自然な場合に1キューに統合される)',
+  'llm.maxMergeSize': '最大マージ数',
+  'llm.maxMergeSize.hint': '(1 回のマージで束ねられる cue 数の上限)',
   'llm.useDictionary': '用語辞書をプロンプトに渡す',
   'llm.useDictionary.hint.enabled': '(固有名詞を文脈つきで修正できる)',
   'llm.useDictionary.hint.disabled': '(上の「用語辞書ファイル」を設定すると有効化)',
