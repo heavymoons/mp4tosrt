@@ -11,7 +11,9 @@ permissions:
 jobs:
   release:
     runs-on: macos-14
-    timeout-minutes: 60
+    # npm run dist が setup:llama (gilad/gemma4 ブランチ clone + ビルド + llama.cpp
+    # b9524 ソースビルド) を内部で実行するため、通常より +5〜15 分かかる。
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 

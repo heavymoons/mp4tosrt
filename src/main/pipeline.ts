@@ -662,7 +662,7 @@ export class Pipeline {
       await ensureModelLoaded(llm.modelId, llm.contextSize)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      const enriched = `${msg}\n\nヒント: node-llama-cpp が現在のモデルアーキテクチャに対応していない可能性があります（Gemma 4 等の最新モデルは未対応のことがあります）。設定の「モデル」を Qwen3.5 4B Q4 などに切り替えて再試行してください。`
+      const enriched = `${msg}\n\nヒント: モデルのロードに失敗しました。Gemma 4 12B は自前ビルドの llama.cpp で対応していますが、メモリ不足（12B は 16GB+ RAM 推奨）やビルド未適用などで失敗することがあります。改善しない場合は設定の「モデル」を Qwen3.5 4B Q4 などに切り替えて再試行してください。`
       throw new Error(enriched)
     }
     this.appendLog(id, `[llm] model ready`)
