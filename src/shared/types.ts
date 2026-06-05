@@ -63,6 +63,12 @@ export type LlmSettings = {
   useDictionary: boolean
   requirePrompt: boolean
   sharedPrompt?: string
+  // バッチ間で文脈を橋渡しするための重複 cue 数。0 = 重複なし（旧挙動）。
+  batchOverlap: number
+  // 隣接 cue を LLM 判断で 1 つにマージできるようにする。
+  allowMerge: boolean
+  // 1 つのマージで束ねられる最大 cue 数。1 にすると実質マージ無効。
+  maxMergeSize: number
 }
 
 export type Settings = {

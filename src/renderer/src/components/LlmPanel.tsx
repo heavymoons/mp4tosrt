@@ -193,6 +193,49 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
           </select>
         </label>
 
+        <label>
+          {t('llm.batchOverlap')} <span className="muted small">{t('llm.batchOverlap.hint')}</span>
+          <input
+            type="number"
+            min={0}
+            max={Math.max(0, settings.llm.batchSize - 1)}
+            value={settings.llm.batchOverlap}
+            onChange={e => {
+              const v = parseInt(e.target.value)
+              const safe = Number.isFinite(v) ? Math.max(0, Math.min(v, settings.llm.batchSize - 1)) : 0
+              setLlm({ batchOverlap: safe })
+            }}
+          />
+        </label>
+
+        <label className="checkbox full">
+          <input
+            type="checkbox"
+            checked={settings.llm.allowMerge}
+            onChange={e => setLlm({ allowMerge: e.target.checked })}
+          />
+          <span>
+            {t('llm.allowMerge')}
+            <span className="muted small"> {t('llm.allowMerge.hint')}</span>
+          </span>
+        </label>
+
+        <label>
+          {t('llm.maxMergeSize')} <span className="muted small">{t('llm.maxMergeSize.hint')}</span>
+          <input
+            type="number"
+            min={2}
+            max={10}
+            value={settings.llm.maxMergeSize}
+            onChange={e => {
+              const v = parseInt(e.target.value)
+              const safe = Number.isFinite(v) ? Math.max(2, Math.min(v, 10)) : 3
+              setLlm({ maxMergeSize: safe })
+            }}
+            disabled={!settings.llm.allowMerge}
+          />
+        </label>
+
         <label className="checkbox full">
           <input
             type="checkbox"

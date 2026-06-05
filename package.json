@@ -18,8 +18,10 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "dist": "npm run build && electron-builder --mac --arm64",
-    "dist:dir": "npm run build && electron-builder --mac --arm64 --dir"
+    "test": "vitest run",
+    "setup:llama": "node scripts/setup-gemma4-llama.mjs",
+    "dist": "npm run setup:llama && npm run build && electron-builder --mac --arm64",
+    "dist:dir": "npm run setup:llama && npm run build && electron-builder --mac --arm64 --dir"
   },
   "build": {
     "appId": "net.heavymoons.mp4tosrt",
@@ -63,11 +65,35 @@
     "dmg": {
       "writeUpdateInfo": false,
       "contents": [
-        { "x": 130, "y": 180, "type": "link", "path": "/Applications" },
-        { "x": 410, "y": 180, "type": "file" },
-        { "x": 130, "y": 340, "type": "file", "path": "README.md" },
-        { "x": 270, "y": 340, "type": "file", "path": "README.en.md" },
-        { "x": 410, "y": 340, "type": "file", "path": "LICENSE" }
+        {
+          "x": 130,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 410,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 130,
+          "y": 340,
+          "type": "file",
+          "path": "README.md"
+        },
+        {
+          "x": 270,
+          "y": 340,
+          "type": "file",
+          "path": "README.en.md"
+        },
+        {
+          "x": 410,
+          "y": 340,
+          "type": "file",
+          "path": "LICENSE"
+        }
       ],
       "window": {
         "width": 540,
@@ -85,7 +111,8 @@
     "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "dompurify": "^3.4.2",
