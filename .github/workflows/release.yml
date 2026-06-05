@@ -14,6 +14,12 @@ jobs:
     # npm run dist が setup:llama (gilad/gemma4 ブランチ clone + ビルド + llama.cpp
     # b9524 ソースビルド) を内部で実行するため、通常より +5〜15 分かかる。
     timeout-minutes: 90
+    # setup:llama の `source download` は llama.cpp リリース解決で GitHub API を叩く。
+    # 未認証だと共有ランナーIPの 60req/h 上限(403)に当たるため、Actions が自動提供する
+    # GITHUB_TOKEN を全ステップに渡して認証リクエストにする(node-llama-cpp の
+    # GitHubClient は GITHUB_TOKEN / GH_TOKEN を参照する)。
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
