@@ -26,14 +26,21 @@ export const LLM_MODEL_PRESETS: LlmModelPreset[] = [
     approxSizeMB: 6500
   },
   {
+    id: 'gemma4-e4b-q4',
+    label: 'Gemma 4 E4B Q4_K_M (軽量・約5GB)',
+    uri: 'hf:unsloth/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf',
+    approxSizeMB: 5000
+  },
+  {
     id: 'gemma4-12b-q4',
     label: 'Gemma 4 12B Q4_K_M (約7.3GB・16GB+ RAM推奨)',
     uri: 'hf:unsloth/gemma-4-12b-it-GGUF/gemma-4-12b-it-Q4_K_M.gguf',
     approxSizeMB: 7300
   }
-  // Gemma 4 12B は gilad/gemma4 ブランチ + 自前ビルドの llama.cpp (b9524) で対応
+  // Gemma 4 は gilad/gemma4 ブランチ + 自前ビルドの llama.cpp (b9524) で対応
   // (scripts/setup-gemma4-llama.mjs / setup:llama)。GGUF 埋め込み jinja テンプレートを
-  // JinjaTemplateChatWrapper で直接使う。E2B/E4B (小型版) は当面外す。
+  // JinjaTemplateChatWrapper で直接使う。判定は id が 'gemma4' 始まりで共通。
+  // E4B (nano 実効~4B) は軽量枠、12B は dense。E2B/26B-A4B/31B は未追加。
   // upstream PR #591 マージ＆リリース後はクリーンな npm 依存へ戻す。
 ]
 
