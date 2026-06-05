@@ -19,7 +19,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # setup:llama の gilad/gemma4 ブランチビルドはローカル Node 22 で検証済み
+          # (branch の engines は >=20 だが、検証環境と揃える)。
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
