@@ -63,15 +63,19 @@ export function repoCacheDir(modelId: string): string {
 }
 
 export async function isVibeVoiceModelDownloaded(modelId: string): Promise<boolean> {
+  // 既知プリセットのみ許可（任意の repo id / 細工された settings を弾く）。
+  if (!findVibeVoicePreset(modelId)) return false
   const venvBin = await resolveVenvBin()
   if (!venvBin) return false
   try {
     // local_files_only=True で全ファイルがキャッシュ済みなら exit 0。未完なら例外で非 0。
+    // modelId は -c スクリプトに埋め込まず sys.argv 経由で渡す（コード注入を防ぐ）。
     await execFileP(
       join(venvBin, 'python'),
       [
         '-c',
-        `from huggingface_hub import snapshot_download as s; s('${modelId}', local_files_only=True)`
+        'import sys; from huggingface_hub import snapshot_download as s; s(sys.argv[1], local_files_only=True)',
+        modelId
       ],
       { maxBuffer: 4 * 1024 * 1024 }
     )
@@ -115,6 +119,11 @@ export function downloadVibeVoiceModel(
   modelId: string,
   opts?: DownloadOptions
 ): Promise<void> {
+  // 既知プリセットのみ許可（任意 repo id を弾く）。hf download 自体は spawn の
+  // argv 渡しでシェル注入は無いが、ここで未知モデルを早期に拒否する。
+  if (!findVibeVoicePreset(modelId)) {
+    return Promise.reject(new Error(`未知の VibeVoice モデルです: ${modelId}`))
+  }
   const existing = inFlightDownloads.get(modelId)
   if (existing) {
     // 2 本目以降: 既存 DL の進捗をこの呼び出しの onProgress にも転送しつつ完了を待つ。
