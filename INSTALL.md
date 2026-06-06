@@ -40,8 +40,8 @@ pipx install mlx-whisper
 
 ## 4. アプリ本体（GitHub からDL → Applications へコピー → 権限設定）
 
-1. [Releases](https://github.com/heavymoons/mp4tosrt/releases) から最新の `.dmg`（または `.zip`）をダウンロード。
-2. `.dmg` を開いて `mp4tosrt` を **Applications フォルダにコピー（ドラッグ）**。`.zip` の場合は展開して `mp4tosrt.app` を Applications にコピー。
+1. [Releases](https://github.com/heavymoons/mp4tosrt/releases) から最新の `.dmg` をダウンロード。
+2. `.dmg` を開いて `mp4tosrt` を **Applications フォルダにコピー（ドラッグ）**。
 3. **権限設定（重要）**: ad-hoc 署名のため初回は Gatekeeper にブロックされる。次のいずれかで許可する:
    - `mp4tosrt.app` を **右クリック →「開く」** → 確認ダイアログで「開く」
    - 開けない場合は **システム設定 → プライバシーとセキュリティ →「このまま開く」**

@@ -40,8 +40,8 @@ pipx install mlx-whisper
 
 ## 4. The app (download from GitHub → copy to Applications → allow it)
 
-1. Download the latest `.dmg` (or `.zip`) from [Releases](https://github.com/heavymoons/mp4tosrt/releases).
-2. Open the `.dmg` and **copy `mp4tosrt` into your Applications folder** (or unzip and move `mp4tosrt.app` there).
+1. Download the latest `.dmg` from [Releases](https://github.com/heavymoons/mp4tosrt/releases).
+2. Open the `.dmg` and **copy `mp4tosrt` into your Applications folder**.
 3. **Allow it (important)**: the build is ad-hoc signed, so Gatekeeper blocks it the first time. Use one of:
    - **right-click `mp4tosrt.app` → Open** → confirm "Open" in the dialog
    - if that fails, **System Settings → Privacy & Security → "Open Anyway"**

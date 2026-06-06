@@ -52,6 +52,5 @@ jobs:
         with:
           files: |
             /tmp/mp4tosrt-release/*.dmg
-            /tmp/mp4tosrt-release/*.zip
           generate_release_notes: true
           fail_on_unmatched_files: true

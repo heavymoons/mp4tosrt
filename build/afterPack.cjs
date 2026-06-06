@@ -15,7 +15,7 @@ module.exports = async function (context) {
   // README / LICENSE を .app の **横** (appOutDir 直下) にコピーする。
   // package.json の extraFiles を使うと macOS だと .app/Contents/ 配下に
   // 入ってしまい codesign が拒否するため、afterPack で外側に置く方式。
-  // DMG (dmg.contents 参照) も ZIP (appOutDir まるごとアーカイブ) も拾える。
+  // DMG (dmg.contents 参照) がこれを拾う（配布は DMG のみ。zip ターゲットは廃止）。
   const projectDir = context.packager.projectDir
   const sidecars = ['INSTALL.md', 'INSTALL.en.md', 'README.md', 'README.en.md', 'LICENSE']
   for (const name of sidecars) {
