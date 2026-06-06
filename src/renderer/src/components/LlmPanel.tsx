@@ -91,13 +91,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
       : 0
 
   return (
-    <div className="settings-section">
-      <div className="settings-section-head">
-        <span>{t('llm.title')}</span>
-        <span className="muted small">{t('llm.subtitle')}</span>
-      </div>
-
-      <div className="settings-grid">
+    <div className="settings-grid">
         <label className="checkbox full">
           <input
             type="checkbox"
@@ -293,6 +287,5 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
           {error && <div className="job-error">{error}</div>}
         </div>
       </div>
-    </div>
   )
 }

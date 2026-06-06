@@ -13,6 +13,7 @@ import {
 } from '../../../shared/vibevoiceModels'
 import LlmPanel from './LlmPanel'
 import FileEditor from './FileEditor'
+import CollapsibleSection from './CollapsibleSection'
 import { useT } from '../i18n'
 import type { LocaleKey } from '../i18n/strings'
 
@@ -156,7 +157,6 @@ export default function SettingsPanel({
   settings, onPickOutputDir, onChange
 }: Props): JSX.Element {
   const t = useT()
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const setFilter = (patch: Partial<AudioFilters>): void => {
     onChange({ audioFilters: { ...settings.audioFilters, ...patch } })
@@ -170,151 +170,50 @@ export default function SettingsPanel({
     <section className="card">
       <div className="card-head">
         <h2>{t('settings.title')}</h2>
-        <button className="ghost small" onClick={() => setShowAdvanced(s => !s)}>
-          {showAdvanced ? t('settings.advanced.hide') : t('settings.advanced.show')}
-        </button>
       </div>
 
-      <div className="settings-grid">
-        <label className="full">
-          {t('settings.outputDir')}
-          <div className="row">
-            <input readOnly value={settings.outputDir || t('settings.outputDir.empty')} />
-            <button onClick={onPickOutputDir}>{t('settings.outputDir.change')}</button>
-          </div>
-        </label>
+      <CollapsibleSection title={t('settings.group.output')} defaultOpen>
+        <div className="settings-grid">
+          <label className="full">
+            {t('settings.outputDir')}
+            <div className="row">
+              <input readOnly value={settings.outputDir || t('settings.outputDir.empty')} />
+              <button onClick={onPickOutputDir}>{t('settings.outputDir.change')}</button>
+            </div>
+          </label>
 
-        <label>
-          {t('settings.engine')}
-          <select
-            value={settings.engine}
-            onChange={e => onChange({ engine: e.target.value as TranscribeEngine })}
-          >
-            <option value="vibevoice-asr">{t('settings.engine.vibevoice')}</option>
-            <option value="mlx-whisper">{t('settings.engine.mlxWhisper')}</option>
-          </select>
-          <span className="muted small">{t('settings.engine.note')}</span>
-        </label>
+          <label className="checkbox full">
+            <input
+              type="checkbox"
+              checked={settings.embedSubtitles}
+              onChange={e => onChange({ embedSubtitles: e.target.checked })}
+            />
+            <span>
+              {t('settings.embedSubtitles.main')}
+              <span className="muted small"> {t('settings.embedSubtitles.hint')}</span>
+            </span>
+          </label>
 
-        {settings.engine === 'mlx-whisper' && (
-          <>
-            <label>
-              {t('settings.model')}
-              <select
-                value={settings.model}
-                onChange={e => onChange({ model: e.target.value })}
-              >
-                {MODEL_PRESETS.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              {t('settings.language')}
-              <select
-                value={settings.language ?? ''}
-                onChange={e => onChange({ language: e.target.value || undefined })}
-              >
-                {LANGUAGES.map(l => (
-                  <option key={l.code || 'auto'} value={l.code}>
-                    {t(l.labelKey)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-
-        {settings.engine === 'vibevoice-asr' && (
-          <>
-            <label>
-              {t('settings.vibevoice.model')}
-              <select
-                value={settings.vibevoiceModel}
-                onChange={e => onChange({ vibevoiceModel: e.target.value })}
-              >
-                {VIBEVOICE_MODEL_PRESETS.map(m => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <VibeVoiceModelPanel modelId={settings.vibevoiceModel} />
-
-            <label className="checkbox full">
-              <input
-                type="checkbox"
-                checked={settings.vibevoiceSpeakerLabels}
-                onChange={e => onChange({ vibevoiceSpeakerLabels: e.target.checked })}
-              />
-              <span>
-                {t('settings.vibevoice.speakerLabels')}
-                <span className="muted small">{' '}{t('settings.vibevoice.speakerLabels.hint')}</span>
-              </span>
-            </label>
-
-            <p className="muted small full">{t('settings.vibevoice.note')}</p>
-          </>
-        )}
-
-        <label>
-          {t('settings.ffmpegConcurrency')}
-          <input
-            type="number"
-            min={1}
-            max={16}
-            value={settings.ffmpegConcurrency}
-            onChange={e =>
-              onChange({ ffmpegConcurrency: clamp(parseInt(e.target.value) || 1, 1, 16) })
-            }
-          />
-        </label>
-
-        <label>
-          {t('settings.whisperConcurrency')}
-          <input
-            type="number"
-            min={1}
-            max={8}
-            value={settings.whisperConcurrency}
-            onChange={e =>
-              onChange({ whisperConcurrency: clamp(parseInt(e.target.value) || 1, 1, 8) })
-            }
-          />
-        </label>
-
-        <label className="checkbox full">
-          <input
-            type="checkbox"
-            checked={settings.embedSubtitles}
-            onChange={e => onChange({ embedSubtitles: e.target.checked })}
-          />
-          <span>
-            {t('settings.embedSubtitles.main')}
-            <span className="muted small"> {t('settings.embedSubtitles.hint')}</span>
-          </span>
-        </label>
-
-        <label className="checkbox full">
-          <input
-            type="checkbox"
-            checked={settings.outputFcpxml}
-            onChange={e => onChange({ outputFcpxml: e.target.checked })}
-          />
-          <span>
-            {t('settings.outputFcpxml.main')}
-            <span className="muted small"> {t('settings.outputFcpxml.hint')}</span>
-          </span>
-        </label>
-      </div>
+          <label className="checkbox full">
+            <input
+              type="checkbox"
+              checked={settings.outputFcpxml}
+              onChange={e => onChange({ outputFcpxml: e.target.checked })}
+            />
+            <span>
+              {t('settings.outputFcpxml.main')}
+              <span className="muted small"> {t('settings.outputFcpxml.hint')}</span>
+            </span>
+          </label>
+        </div>
+      </CollapsibleSection>
 
       {settings.outputFcpxml && (
-        <div className="settings-section">
-          <div className="settings-section-head">
-            <span>{t('settings.fcpxml.section')}</span>
-            <span className="muted small">{t('settings.fcpxml.section.hint')}</span>
-          </div>
+        <CollapsibleSection
+          title={t('settings.fcpxml.section')}
+          hint={t('settings.fcpxml.section.hint')}
+          defaultOpen
+        >
           <div className="settings-grid">
             <label className="full">
               {t('settings.fcpxml.mode')}
@@ -437,17 +336,122 @@ export default function SettingsPanel({
               </>
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {showAdvanced && (
-        <>
-          <div className="settings-section">
-            <div className="settings-section-head">
-              <span>{t('settings.audio.title')}</span>
-              <span className="muted small">{t('settings.audio.subtitle')}</span>
-            </div>
-            <div className="settings-grid">
+      <CollapsibleSection title={t('settings.group.transcription')} defaultOpen>
+        <div className="settings-grid">
+          <label>
+            {t('settings.engine')}
+            <select
+              value={settings.engine}
+              onChange={e => onChange({ engine: e.target.value as TranscribeEngine })}
+            >
+              <option value="vibevoice-asr">{t('settings.engine.vibevoice')}</option>
+              <option value="mlx-whisper">{t('settings.engine.mlxWhisper')}</option>
+            </select>
+            <span className="muted small">{t('settings.engine.note')}</span>
+          </label>
+
+          {settings.engine === 'mlx-whisper' && (
+            <>
+              <label>
+                {t('settings.model')}
+                <select
+                  value={settings.model}
+                  onChange={e => onChange({ model: e.target.value })}
+                >
+                  {MODEL_PRESETS.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                {t('settings.language')}
+                <select
+                  value={settings.language ?? ''}
+                  onChange={e => onChange({ language: e.target.value || undefined })}
+                >
+                  {LANGUAGES.map(l => (
+                    <option key={l.code || 'auto'} value={l.code}>
+                      {t(l.labelKey)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+
+          {settings.engine === 'vibevoice-asr' && (
+            <>
+              <label>
+                {t('settings.vibevoice.model')}
+                <select
+                  value={settings.vibevoiceModel}
+                  onChange={e => onChange({ vibevoiceModel: e.target.value })}
+                >
+                  {VIBEVOICE_MODEL_PRESETS.map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <VibeVoiceModelPanel modelId={settings.vibevoiceModel} />
+
+              <label className="checkbox full">
+                <input
+                  type="checkbox"
+                  checked={settings.vibevoiceSpeakerLabels}
+                  onChange={e => onChange({ vibevoiceSpeakerLabels: e.target.checked })}
+                />
+                <span>
+                  {t('settings.vibevoice.speakerLabels')}
+                  <span className="muted small">{' '}{t('settings.vibevoice.speakerLabels.hint')}</span>
+                </span>
+              </label>
+
+              <p className="muted small full">{t('settings.vibevoice.note')}</p>
+            </>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title={t('settings.group.performance')}>
+        <div className="settings-grid">
+          <label>
+            {t('settings.ffmpegConcurrency')}
+            <input
+              type="number"
+              min={1}
+              max={16}
+              value={settings.ffmpegConcurrency}
+              onChange={e =>
+                onChange({ ffmpegConcurrency: clamp(parseInt(e.target.value) || 1, 1, 16) })
+              }
+            />
+          </label>
+
+          <label>
+            {t('settings.whisperConcurrency')}
+            <input
+              type="number"
+              min={1}
+              max={8}
+              value={settings.whisperConcurrency}
+              onChange={e =>
+                onChange({ whisperConcurrency: clamp(parseInt(e.target.value) || 1, 1, 8) })
+              }
+            />
+          </label>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title={t('settings.audio.title')}
+        hint={t('settings.audio.subtitle')}
+      >
+        <div className="settings-grid">
               <label className="checkbox">
                 <input
                   type="checkbox"
@@ -487,127 +491,124 @@ export default function SettingsPanel({
                 <span>{t('settings.audio.denoise')} <span className="muted small">{t('settings.audio.denoise.hint')}</span></span>
               </label>
             </div>
-          </div>
+      </CollapsibleSection>
 
-          {settings.engine === 'mlx-whisper' && (
-          <div className="settings-section">
-            <div className="settings-section-head">
-              <span>{t('settings.whisper.title')}</span>
-              <span className="muted small">{t('settings.whisper.subtitle')}</span>
-            </div>
-            <div className="settings-grid">
-              <label className="checkbox full">
-                <input
-                  type="checkbox"
-                  checked={settings.conditionOnPreviousText}
-                  onChange={e => onChange({ conditionOnPreviousText: e.target.checked })}
-                />
-                <span>
-                  {t('settings.whisper.condition')}
-                  <span className="muted small">{' '}{t('settings.whisper.condition.hint')}</span>
-                </span>
-              </label>
-
-              <label className="checkbox full">
-                <input
-                  type="checkbox"
-                  checked={settings.wordTimestamps}
-                  onChange={e => onChange({ wordTimestamps: e.target.checked })}
-                />
-                <span>
-                  {t('settings.whisper.wordTimestamps')}
-                  <span className="muted small">{' '}{t('settings.whisper.wordTimestamps.hint')}</span>
-                </span>
-              </label>
-
-              <label className="full">
-                <span>
-                  {t('settings.whisper.noSpeech.label')}{' '}
-                  <strong className="mono">{settings.noSpeechThreshold.toFixed(2)}</strong>
-                  <span className="muted small">{' '}{t('settings.whisper.noSpeech.hint')}</span>
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={settings.noSpeechThreshold}
-                  onChange={e =>
-                    onChange({ noSpeechThreshold: parseFloat(e.target.value) })
-                  }
-                />
-              </label>
-
-              <label className="full">
-                <span>
-                  {t('settings.whisper.logprob.label')}{' '}
-                  <strong className="mono">{settings.logprobThreshold.toFixed(2)}</strong>
-                  <span className="muted small">{' '}{t('settings.whisper.logprob.hint')}</span>
-                </span>
-                <input
-                  type="range"
-                  min={-3}
-                  max={0}
-                  step={0.1}
-                  value={settings.logprobThreshold}
-                  onChange={e =>
-                    onChange({ logprobThreshold: parseFloat(e.target.value) })
-                  }
-                />
-              </label>
-            </div>
-          </div>
-          )}
-
-          <div className="settings-section">
-            <div className="settings-section-head">
-              <span>{t('settings.postproc.suppress.title')}</span>
-              <span className="muted small">{t('settings.postproc.suppress.subtitle')}</span>
-            </div>
-            <div className="settings-grid">
-              <label className="checkbox full">
-                <input
-                  type="checkbox"
-                  checked={settings.suppressHallucinations}
-                  onChange={e => onChange({ suppressHallucinations: e.target.checked })}
-                />
-                <span>
-                  {t('settings.postproc.suppress.enable')}
-                  <span className="muted small">{' '}{t('settings.postproc.suppress.enable.hint')}</span>
-                </span>
-              </label>
-            </div>
-            {settings.hallucinationsListPath && (
-              <FileEditor
-                label={t('settings.postproc.suppress.fileLabel')}
-                kind="hallucinations"
-                path={settings.hallucinationsListPath}
-                onPathChange={p => onChange({ hallucinationsListPath: p })}
-                pickFile={() => window.api.openHallucinationsFile()}
-                enabled={settings.suppressHallucinations}
+      {settings.engine === 'mlx-whisper' && (
+        <CollapsibleSection
+          title={t('settings.whisper.title')}
+          hint={t('settings.whisper.subtitle')}
+        >
+          <div className="settings-grid">
+            <label className="checkbox full">
+              <input
+                type="checkbox"
+                checked={settings.conditionOnPreviousText}
+                onChange={e => onChange({ conditionOnPreviousText: e.target.checked })}
               />
-            )}
-          </div>
+              <span>
+                {t('settings.whisper.condition')}
+                <span className="muted small">{' '}{t('settings.whisper.condition.hint')}</span>
+              </span>
+            </label>
 
-          <div className="settings-section">
-            <div className="settings-section-head">
-              <span>{t('settings.postproc.dict.title')}</span>
-              <span className="muted small">{t('settings.postproc.dict.subtitle')}</span>
-            </div>
-            {settings.replaceDictPath && (
-              <FileEditor
-                label={t('settings.postproc.dict.fileLabel')}
-                kind="dict"
-                path={settings.replaceDictPath}
-                onPathChange={p => onChange({ replaceDictPath: p })}
-                pickFile={() => window.api.openDictFile()}
+            <label className="checkbox full">
+              <input
+                type="checkbox"
+                checked={settings.wordTimestamps}
+                onChange={e => onChange({ wordTimestamps: e.target.checked })}
               />
-            )}
-          </div>
+              <span>
+                {t('settings.whisper.wordTimestamps')}
+                <span className="muted small">{' '}{t('settings.whisper.wordTimestamps.hint')}</span>
+              </span>
+            </label>
 
-          <LlmPanel settings={settings} onChange={onChange} />
-        </>
+            <label className="full">
+              <span>
+                {t('settings.whisper.noSpeech.label')}{' '}
+                <strong className="mono">{settings.noSpeechThreshold.toFixed(2)}</strong>
+                <span className="muted small">{' '}{t('settings.whisper.noSpeech.hint')}</span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={settings.noSpeechThreshold}
+                onChange={e =>
+                  onChange({ noSpeechThreshold: parseFloat(e.target.value) })
+                }
+              />
+            </label>
+
+            <label className="full">
+              <span>
+                {t('settings.whisper.logprob.label')}{' '}
+                <strong className="mono">{settings.logprobThreshold.toFixed(2)}</strong>
+                <span className="muted small">{' '}{t('settings.whisper.logprob.hint')}</span>
+              </span>
+              <input
+                type="range"
+                min={-3}
+                max={0}
+                step={0.1}
+                value={settings.logprobThreshold}
+                onChange={e =>
+                  onChange({ logprobThreshold: parseFloat(e.target.value) })
+                }
+              />
+            </label>
+          </div>
+        </CollapsibleSection>
       )}
+
+      <CollapsibleSection
+        title={t('settings.postproc.suppress.title')}
+        hint={t('settings.postproc.suppress.subtitle')}
+      >
+        <div className="settings-grid">
+          <label className="checkbox full">
+            <input
+              type="checkbox"
+              checked={settings.suppressHallucinations}
+              onChange={e => onChange({ suppressHallucinations: e.target.checked })}
+            />
+            <span>
+              {t('settings.postproc.suppress.enable')}
+              <span className="muted small">{' '}{t('settings.postproc.suppress.enable.hint')}</span>
+            </span>
+          </label>
+        </div>
+        {settings.hallucinationsListPath && (
+          <FileEditor
+            label={t('settings.postproc.suppress.fileLabel')}
+            kind="hallucinations"
+            path={settings.hallucinationsListPath}
+            onPathChange={p => onChange({ hallucinationsListPath: p })}
+            pickFile={() => window.api.openHallucinationsFile()}
+            enabled={settings.suppressHallucinations}
+          />
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title={t('settings.postproc.dict.title')}
+        hint={t('settings.postproc.dict.subtitle')}
+      >
+        {settings.replaceDictPath && (
+          <FileEditor
+            label={t('settings.postproc.dict.fileLabel')}
+            kind="dict"
+            path={settings.replaceDictPath}
+            onPathChange={p => onChange({ replaceDictPath: p })}
+            pickFile={() => window.api.openDictFile()}
+          />
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title={t('llm.title')} hint={t('llm.subtitle')}>
+        <LlmPanel settings={settings} onChange={onChange} />
+      </CollapsibleSection>
     </section>
   )
 }

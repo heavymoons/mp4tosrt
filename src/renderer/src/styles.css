@@ -213,20 +213,39 @@ h2 {
 }
 
 .settings-section {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .settings-section-head {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 8px;
-  font-size: 12px;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
   font-weight: 600;
   color: var(--fg);
-  gap: 12px;
-  flex-wrap: wrap;
+  text-align: left;
+}
+.settings-section-head:hover {
+  background: var(--bg);
+}
+.settings-section-head .chevron {
+  color: var(--muted);
+  font-size: 10px;
+  width: 12px;
+  flex: none;
+}
+.settings-section-head .settings-section-title {
+  flex: 1 1 auto;
+}
+.settings-section-body {
+  padding: 0 12px 12px;
 }
 .settings-grid label.checkbox {
   flex-direction: row;
