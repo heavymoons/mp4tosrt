@@ -199,22 +199,33 @@ export async function ensureModelLoaded(modelId: string, _contextSize: number): 
   // 内蔵 Gemma 4 ラッパーは未完成(空出力/segfault)なので、GGUF 埋め込みの
   // jinja chat_template を JinjaTemplateChatWrapper で直接使う。
   if (preset.id.startsWith('gemma4')) {
-    const template = modelInstance.fileInfo?.metadata?.tokenizer?.chat_template
-    if (!template || template.trim().length === 0) {
-      throw new Error(
-        `Gemma 4 モデル (${preset.id}) の chat_template が GGUF メタデータから取得できませんでした。` +
-        'このモデルでは jinja テンプレート直叩きが必須のため処理を中止します。'
-      )
+    try {
+      const template = modelInstance.fileInfo?.metadata?.tokenizer?.chat_template
+      if (!template || template.trim().length === 0) {
+        throw new Error(
+          `Gemma 4 モデル (${preset.id}) の chat_template が GGUF メタデータから取得できませんでした。` +
+          'このモデルでは jinja テンプレート直叩きが必須のため処理を中止します。'
+        )
+      }
+      // テンプレートが Gemma 4 新形式かを健全性チェック (auto wrapper へ落とさない)。
+      if (!template.includes('<|turn>') && !template.includes('<|channel>')) {
+        throw new Error(
+          `Gemma 4 モデル (${preset.id}) の chat_template が想定形式 (<|turn> / <|channel>) を含みません。` +
+          '正しい Gemma 4 GGUF か確認してください。'
+        )
+      }
+      currentChatTemplate = template
+      currentIsGemma4 = true
+    } catch (e) {
+      // 検証失敗時はロード済み状態を破棄し、次回 early-return で
+      // Gemma 状態なしのまま進むのを防ぐ（壊れた auto wrapper を回避）。
+      try { await modelInstance.dispose() } catch { /* ignore */ }
+      modelInstance = undefined
+      currentModelPath = undefined
+      currentIsGemma4 = false
+      currentChatTemplate = undefined
+      throw e
     }
-    // テンプレートが Gemma 4 新形式かを健全性チェック (auto wrapper へ落とさない)。
-    if (!template.includes('<|turn>') && !template.includes('<|channel>')) {
-      throw new Error(
-        `Gemma 4 モデル (${preset.id}) の chat_template が想定形式 (<|turn> / <|channel>) を含みません。` +
-        '正しい Gemma 4 GGUF か確認してください。'
-      )
-    }
-    currentChatTemplate = template
-    currentIsGemma4 = true
   }
 }
 

@@ -10,9 +10,13 @@ const execFileP = promisify(execFile)
 
 // venvBin = dirname(realpath(which('mlx_audio.stt.generate')))。
 // mlx_audio CLI / python / hf(HF CLI) は同じ pipx venv の bin/ に同居する。
-// 解決結果はモジュールにキャッシュ（null = 未解決として確定キャッシュ）。
-let venvBinCache: string | null | undefined
-let downloadingModelId: string | undefined
+// 成功時のみキャッシュ。失敗はキャッシュしない（次回呼び出しで再解決）。
+// これにより、後から pipx install mlx-audio しても DL 側が「未検出」のまま固定されない。
+let venvBinCache: string | undefined
+
+// 同一 modelId の DL を dedupe する。in-flight な DL があれば 2 本目以降は
+// その Promise を await し、進捗のみ転送する（同一モデルを二重 DL しない）。
+const inFlightDownloads = new Map<string, Promise<void>>()
 
 type DownloadListener = (p: LlmDownloadProgress) => void
 const downloadListeners = new Set<DownloadListener>()
@@ -37,18 +41,13 @@ async function which(name: string): Promise<string | undefined> {
 }
 
 export async function resolveVenvBin(): Promise<string | undefined> {
-  if (venvBinCache !== undefined) return venvBinCache ?? undefined
+  if (venvBinCache) return venvBinCache
   try {
     const cliPath = await which('mlx_audio.stt.generate')
-    if (!cliPath) {
-      venvBinCache = null
-      return undefined
-    }
-    const real = realpathSync(cliPath)
-    venvBinCache = dirname(real)
+    if (!cliPath) return undefined
+    venvBinCache = dirname(realpathSync(cliPath))
     return venvBinCache
   } catch {
-    venvBinCache = null
     return undefined
   }
 }
@@ -112,13 +111,35 @@ export type DownloadOptions = {
   onProc?: (p: ChildProcess) => void
 }
 
-export async function downloadVibeVoiceModel(
+export function downloadVibeVoiceModel(
   modelId: string,
   opts?: DownloadOptions
 ): Promise<void> {
-  if (downloadingModelId) {
-    throw new Error(`Another VibeVoice model is already downloading: ${downloadingModelId}`)
+  const existing = inFlightDownloads.get(modelId)
+  if (existing) {
+    // 2 本目以降: 既存 DL の進捗をこの呼び出しの onProgress にも転送しつつ完了を待つ。
+    // owner が DL を所有しているため、ここでは onProc（プロセス）は配線しない
+    // ＝このジョブをキャンセルしても共有 DL は止めない（owner が必要としているため正しい）。
+    // owner が失敗すれば、await している 2 本目以降も同じ rejection を受ける。
+    if (!opts?.onProgress) return existing
+    const off = onVibeVoiceDownloadProgress(p => {
+      if (p.modelId === modelId) opts.onProgress!(p)
+    })
+    return existing.finally(off)
   }
+
+  // in-flight 登録は get→set の間に await を挟まず同期的に行う（同時開始の二重 DL を防ぐ）。
+  const tracked = runVibeVoiceDownload(modelId, opts).finally(() => {
+    inFlightDownloads.delete(modelId)
+  })
+  inFlightDownloads.set(modelId, tracked)
+  return tracked
+}
+
+async function runVibeVoiceDownload(
+  modelId: string,
+  opts?: DownloadOptions
+): Promise<void> {
   const venvBin = await resolveVenvBin()
   if (!venvBin) {
     throw new Error(
@@ -129,8 +150,6 @@ export async function downloadVibeVoiceModel(
   const preset = findVibeVoicePreset(modelId)
   const totalBytes = preset ? preset.approxSizeMB * 1024 * 1024 : undefined
   const cacheDir = repoCacheDir(modelId)
-
-  downloadingModelId = modelId
 
   const emit = (p: LlmDownloadProgress): void => {
     opts?.onProgress?.(p)
@@ -154,7 +173,6 @@ export async function downloadVibeVoiceModel(
 
     proc.on('error', err => {
       stop()
-      downloadingModelId = undefined
       emit({
         modelId,
         totalBytes,
@@ -167,7 +185,6 @@ export async function downloadVibeVoiceModel(
 
     proc.on('close', code => {
       stop()
-      downloadingModelId = undefined
       if (code === 0) {
         emit({
           modelId,

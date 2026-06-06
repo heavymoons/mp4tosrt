@@ -192,6 +192,7 @@ export class Pipeline {
         this.appendLog(id, '[rerun] llm correction is disabled in settings — skipping')
       }
       if (this.settings.embedSubtitles) {
+        if (this.jobs.get(id)?.status === 'cancelled') return
         this.update(id, { phase: 'embed', progress: 0 })
         try {
           await this.runEmbedSubtitles(id, job.inputPath, job.outputPath, job.outputDir)
@@ -200,6 +201,7 @@ export class Pipeline {
         }
       }
       if (this.settings.outputFcpxml) {
+        if (this.jobs.get(id)?.status === 'cancelled') return
         this.update(id, { phase: 'fcpxml', progress: 0 })
         try {
           await this.runGenerateFcpxml(id, job.inputPath, job.outputPath, job.outputDir)
@@ -207,6 +209,7 @@ export class Pipeline {
           this.appendLog(id, `[fcpxml] failed: ${errMsg(e)}`)
         }
       }
+      if (this.jobs.get(id)?.status === 'cancelled') return
       this.update(id, {
         status: 'done',
         phase: 'done',
@@ -399,6 +402,7 @@ export class Pipeline {
         }
 
         if (this.settings.llm.enabled) {
+          if (this.jobs.get(id)?.status === 'cancelled') return
           this.update(id, { phase: 'llm-correct', progress: 0 })
           try {
             await this.runLlmCorrection(id, outputPath)
@@ -408,6 +412,7 @@ export class Pipeline {
         }
 
         if (this.settings.embedSubtitles) {
+          if (this.jobs.get(id)?.status === 'cancelled') return
           this.update(id, { phase: 'embed', progress: 0 })
           try {
             await this.runEmbedSubtitles(id, job.inputPath, outputPath, job.outputDir)
@@ -417,6 +422,7 @@ export class Pipeline {
         }
 
         if (this.settings.outputFcpxml) {
+          if (this.jobs.get(id)?.status === 'cancelled') return
           this.update(id, { phase: 'fcpxml', progress: 0 })
           try {
             await this.runGenerateFcpxml(id, job.inputPath, outputPath, job.outputDir)
@@ -425,6 +431,7 @@ export class Pipeline {
           }
         }
 
+        if (this.jobs.get(id)?.status === 'cancelled') return
         this.update(id, {
           status: 'done', phase: 'done', progress: 100, finishedAt: Date.now()
         })
@@ -602,6 +609,9 @@ export class Pipeline {
         id,
         `[vibevoice] モデル未取得。初回ダウンロード開始 (${model}) — 数分かかります`
       )
+      // 共有DLなのでジョブ個別の cancel では止めない（onProc を張らない）。
+      // 同一モデルを待つ別ジョブを巻き添えで殺さないため。キャンセルされた
+      // ジョブは DL 完了後の cancelled 再チェックで transcribe へ進まない。
       await downloadVibeVoiceModel(model, {
         onProgress: p => {
           if (p.totalBytes) {
@@ -609,11 +619,16 @@ export class Pipeline {
               progress: Math.min(99, Math.round((p.downloadedBytes / p.totalBytes) * 100))
             })
           }
-        },
-        onProc: p => this.procs.set(id, p)
+        }
       })
       this.appendLog(id, `[vibevoice] モデルDL完了`)
       this.update(id, { phase: 'transcribe', progress: 0 })
+    }
+
+    // 共有DL待ち中などにキャンセルされた場合、DL後に transcribe へ進ませない。
+    // （dedupe 経路は onProc を張らないため、ここで明示的に再チェックする）
+    if (this.jobs.get(id)?.status === 'cancelled') {
+      throw new Error('cancelled before transcription')
     }
 
     const finalStem = basename(originalInput, extname(originalInput))
@@ -806,8 +821,14 @@ export class Pipeline {
       onProgress: (done, total) => {
         const pct = Math.min(99, Math.round((done / total) * 100))
         this.update(id, { progress: pct })
-      }
+      },
+      shouldCancel: () => this.jobs.get(id)?.status === 'cancelled'
     })
+
+    if (this.jobs.get(id)?.status === 'cancelled') {
+      this.appendLog(id, '[llm] cancelled — corrected.srt は書き込みません')
+      return
+    }
 
     const correctedSrt = serializeSrt(corrected)
     const correctedPath = srtPath.replace(/\.srt$/i, '.corrected.srt')
