@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
 import { Pipeline, jobLogPath } from './pipeline'
 import type {
   Job,
@@ -39,8 +39,15 @@ import {
 import { registerVideoProtocol } from './preview'
 import { startMediaServer, getMediaServerPort } from './mediaServer'
 
+// 既定の共通プロンプト。初回起動時に OS ロケールで ja/en を切り替える（registerIpcHandlers）。
+// 出力言語は固定せず「元の発話の言語のまま」整える指示にして多言語の音声に対応する。
+const JA_DEFAULT_SHARED_PROMPT =
+  'フィラーや言い淀みを省き、元の発話の言語のまま、自然で読みやすいテキストに整える'
+const EN_DEFAULT_SHARED_PROMPT =
+  'Remove fillers and false starts, and rewrite the transcript into clear, readable text in the original spoken language.'
+
 const DEFAULT_SETTINGS: PipelineSettings = {
-  engine: 'mlx-whisper',
+  engine: 'vibevoice-asr',
   model: 'mlx-community/whisper-large-v3-turbo',
   vibevoiceModel: 'mlx-community/VibeVoice-ASR-4bit',
   vibevoiceSpeakerLabels: false,
@@ -65,17 +72,21 @@ const DEFAULT_SETTINGS: PipelineSettings = {
     // CJK のグリフを持つ macOS システムフォント。Helvetica 系だと日本語が
     // フォント解決失敗で fill が描画されない場合がある。
     font: '.AppleSystemUIFont',
-    fontSize: 60
+    fontSize: 60,
+    maxCharsPerLine: 24,
+    wrapAutoFit: true,
+    wrapAutoFitRatio: 0.9
   },
   suppressHallucinations: true,
   llm: {
-    enabled: false,
-    modelId: 'qwen3.5-4b-q4',
+    enabled: true,
+    modelId: 'gemma4-12b-q4',
     batchSize: 30,
     contextSize: 4096,
     useDictionary: true,
-    requirePrompt: true,
-    sharedPrompt: '',
+    // enabled=true のまま requirePrompt=true だと全ジョブがプロンプト待ちで停止するため false。
+    requirePrompt: false,
+    sharedPrompt: JA_DEFAULT_SHARED_PROMPT,
     batchOverlap: 20,
     allowMerge: true,
     maxMergeSize: 3
@@ -86,6 +97,14 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   await ensureAllDefaultFiles()
   const stored = (await readPersistedSettings<PipelineSettings>()) ?? {}
   let settings: PipelineSettings = mergeSettings(DEFAULT_SETTINGS, stored)
+  // 共通プロンプトの既定はロケール連動: ユーザー未設定 (stored に無い) かつ OS ロケールが
+  // 日本語以外なら英語の既定文に差し替える。既存ユーザーの保存値は触らない。
+  if (
+    (stored as Partial<PipelineSettings>).llm?.sharedPrompt === undefined &&
+    !app.getLocale().toLowerCase().startsWith('ja')
+  ) {
+    settings.llm.sharedPrompt = EN_DEFAULT_SHARED_PROMPT
+  }
   // 初回起動 / パス未設定時はデフォルトファイルを既定値として割り当てる
   if (!settings.replaceDictPath) settings.replaceDictPath = defaultFilePath('dict')
   if (!settings.hallucinationsListPath) settings.hallucinationsListPath = defaultFilePath('hallucinations')

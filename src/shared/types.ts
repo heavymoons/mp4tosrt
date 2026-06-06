@@ -54,6 +54,12 @@ export type FcpxmlSubtitleStyle = {
   font: string
   // フォントサイズ (pt)
   fontSize: number
+  // 1行あたり最大文字数（全角換算・句読点/空白で折返し・0で無効）。wrapAutoFit=false 時に使用
+  maxCharsPerLine: number
+  // true=フォントサイズ連動で自動算出、false=手動の maxCharsPerLine を使用
+  wrapAutoFit: boolean
+  // 自動算出の係数 (floor(動画幅 ÷ フォントサイズ × wrapAutoFitRatio))。小さいほど1行が短く余白大
+  wrapAutoFitRatio: number
 }
 
 export type LlmSettings = {

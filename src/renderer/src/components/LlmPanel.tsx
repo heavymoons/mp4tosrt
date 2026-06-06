@@ -165,6 +165,7 @@ export default function LlmPanel({ settings, onChange }: Props): JSX.Element {
               </option>
             ))}
           </select>
+          <span className="muted small">{t('llm.model.note')}</span>
         </label>
 
         <label>

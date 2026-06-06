@@ -6,7 +6,7 @@
 
 export const EN = {
   // App header
-  'app.subtitle': 'Video → SRT subtitles (ffmpeg + mlx-whisper)',
+  'app.subtitle': 'Video → SRT subtitles (ffmpeg + VibeVoice-ASR / mlx-whisper)',
   'app.manual': 'Manual',
   'app.locale.ja': '日本語',
   'app.locale.en': 'English',
@@ -56,11 +56,16 @@ export const EN = {
   'settings.fcpxml.vertical.top': 'Top',
   'settings.fcpxml.vertical.middle': 'Middle',
   'settings.fcpxml.vertical.bottom': 'Bottom (lower-third)',
+  'settings.fcpxml.maxCharsPerLine': 'Max characters per line (full-width count; wraps at punctuation/space; 0 = off)',
+  'settings.fcpxml.wrapAutoFit': 'Auto-fit wrap to font size',
+  'settings.fcpxml.wrapAutoFitRatio': 'Wrap ratio (videoWidth ÷ fontSize × ratio; smaller = shorter lines)',
   'settings.fcpxml.font': 'Font',
   'settings.fcpxml.fontSize': 'Font size (pt)',
   'settings.engine': 'Transcription engine',
-  'settings.engine.mlxWhisper': 'mlx-whisper',
-  'settings.engine.vibevoice': 'VibeVoice-ASR (speaker-aware)',
+  'settings.engine.mlxWhisper': 'mlx-whisper (stable fallback)',
+  'settings.engine.vibevoice': 'VibeVoice-ASR (speaker-aware, recommended)',
+  'settings.engine.note':
+    'VibeVoice-ASR / Gemma 4 are a bleeding-edge stack with no stable release yet and may break in the future. In local testing their quality was overwhelmingly better. Switch to the mlx-whisper / Qwen fallback if you prefer stability.',
   'settings.vibevoice.model': 'VibeVoice model',
   'settings.vibevoice.speakerLabels': 'Prefix speaker labels in the text',
   'settings.vibevoice.speakerLabels.hint':
@@ -142,6 +147,8 @@ export const EN = {
   'llm.shared.placeholder':
     'e.g. Videos from my YouTube channel "heavymoons". Proper nouns and military/political terms appear often.',
   'llm.model': 'Model',
+  'llm.model.note':
+    'Gemma 4 is a bleeding-edge stack (no stable release yet, may break), but performed overwhelmingly better in local testing. Choose the Qwen fallback if you prefer stability.',
   'llm.batchSize': 'Batch size',
   'llm.batchSize.hint': '(cues per request)',
   'llm.contextSize': 'Context size',
@@ -250,7 +257,7 @@ export const EN = {
 
 export const JA: Messages = {
   // App header
-  'app.subtitle': '動画ファイル → SRT 字幕（ffmpeg + mlx-whisper）',
+  'app.subtitle': '動画ファイル → SRT 字幕（ffmpeg + VibeVoice-ASR / mlx-whisper）',
   'app.manual': 'マニュアル',
   'app.locale.ja': '日本語',
   'app.locale.en': 'English',
@@ -300,11 +307,16 @@ export const JA: Messages = {
   'settings.fcpxml.vertical.top': '上',
   'settings.fcpxml.vertical.middle': '中央',
   'settings.fcpxml.vertical.bottom': '下 (下 1/3)',
+  'settings.fcpxml.maxCharsPerLine': '1行の最大文字数（全角換算・句読点/空白で折返し・0で無効）',
+  'settings.fcpxml.wrapAutoFit': 'フォントサイズに連動して自動折返し',
+  'settings.fcpxml.wrapAutoFitRatio': '折返し係数（動画幅÷フォントサイズ×係数。小さいほど短く余白大）',
   'settings.fcpxml.font': 'フォント',
   'settings.fcpxml.fontSize': 'フォントサイズ (pt)',
   'settings.engine': '文字起こしエンジン',
-  'settings.engine.mlxWhisper': 'mlx-whisper',
-  'settings.engine.vibevoice': 'VibeVoice-ASR (話者対応)',
+  'settings.engine.mlxWhisper': 'mlx-whisper（安定版・予備）',
+  'settings.engine.vibevoice': 'VibeVoice-ASR（話者対応・推奨）',
+  'settings.engine.note':
+    'VibeVoice-ASR / Gemma 4 は安定版がまだ無い最新スタックで、将来壊れる可能性があります。ただし手元検証では性能が圧倒的でした。安定重視なら予備の mlx-whisper / Qwen に切り替えてください。',
   'settings.vibevoice.model': 'VibeVoice モデル',
   'settings.vibevoice.speakerLabels': '話者ラベルを本文に付与',
   'settings.vibevoice.speakerLabels.hint':
@@ -386,6 +398,8 @@ export const JA: Messages = {
   'llm.shared.placeholder':
     '例: 自分のYouTubeチャンネル「heavymoons」の動画です。日本語の固有名詞や軍事/政治用語が頻出します。',
   'llm.model': 'モデル',
+  'llm.model.note':
+    'Gemma 4 は安定版がまだ無い最新スタック（将来壊れる可能性あり）ですが、手元検証では性能が圧倒的でした。安定重視なら予備の Qwen を選んでください。',
   'llm.batchSize': 'バッチサイズ',
   'llm.batchSize.hint': '(1回のリクエストで送るキュー数)',
   'llm.contextSize': 'コンテキストサイズ',

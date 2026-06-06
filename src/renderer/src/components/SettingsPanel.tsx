@@ -190,9 +190,10 @@ export default function SettingsPanel({
             value={settings.engine}
             onChange={e => onChange({ engine: e.target.value as TranscribeEngine })}
           >
-            <option value="mlx-whisper">{t('settings.engine.mlxWhisper')}</option>
             <option value="vibevoice-asr">{t('settings.engine.vibevoice')}</option>
+            <option value="mlx-whisper">{t('settings.engine.mlxWhisper')}</option>
           </select>
+          <span className="muted small">{t('settings.engine.note')}</span>
         </label>
 
         {settings.engine === 'mlx-whisper' && (
@@ -332,6 +333,48 @@ export default function SettingsPanel({
                   : t('settings.fcpxml.mode.captionHint')}
               </span>
             </label>
+
+            <label className="checkbox full">
+              <input
+                type="checkbox"
+                checked={settings.fcpxmlSubtitle.wrapAutoFit}
+                onChange={e => setFcpxmlStyle({ wrapAutoFit: e.target.checked })}
+              />
+              <span>{t('settings.fcpxml.wrapAutoFit')}</span>
+            </label>
+
+            {settings.fcpxmlSubtitle.wrapAutoFit ? (
+              <label>
+                {t('settings.fcpxml.wrapAutoFitRatio')}
+                <input
+                  type="number"
+                  min={0.3}
+                  max={2.0}
+                  step={0.05}
+                  value={settings.fcpxmlSubtitle.wrapAutoFitRatio}
+                  onChange={e =>
+                    setFcpxmlStyle({
+                      wrapAutoFitRatio: clamp(parseFloat(e.target.value) || 0.9, 0.3, 2.0)
+                    })
+                  }
+                />
+              </label>
+            ) : (
+              <label>
+                {t('settings.fcpxml.maxCharsPerLine')}
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={settings.fcpxmlSubtitle.maxCharsPerLine}
+                  onChange={e =>
+                    setFcpxmlStyle({
+                      maxCharsPerLine: clamp(parseInt(e.target.value) || 0, 0, 100)
+                    })
+                  }
+                />
+              </label>
+            )}
 
             {settings.fcpxmlSubtitle.mode === 'title' && (
               <>

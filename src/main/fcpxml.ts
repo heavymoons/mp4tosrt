@@ -158,6 +158,93 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;')
 }
 
+// 全角=1, 半角 (ASCII 印字可能 0x20-0x7E)=0.5 で表示幅を返す
+export function charWidth(ch: string): number {
+  const code = ch.codePointAt(0) ?? 0
+  return code >= 0x20 && code <= 0x7e ? 0.5 : 1
+}
+
+export function strWidth(s: string): number {
+  let w = 0
+  for (const ch of s) w += charWidth(ch)
+  return w
+}
+
+// 句読点類（直後で改行可能）
+const BREAK_PUNCT = /[、。，．！？!?…・]/
+
+/**
+ * 1行化済みテキストを maxPerLine（全角換算）で折り返し、'\n' 区切りで返す。
+ * maxPerLine <= 0 なら折返しなし。
+ */
+export function wrapText(oneLine: string, maxPerLine: number): string {
+  if (maxPerLine <= 0 || !oneLine) return oneLine
+
+  // --- 1. 分割単位に切り出す ---
+  // 「句読点までを1塊」「半角スペースで区切られた語」に分解する。
+  // 各単位は text と「直前に半角スペースがあったか (spaceBefore)」を保持する。
+  // 同一行で連結するときだけそのスペースを復元し（"Hello world" が
+  // "Helloworld" にならない）、行頭ではスペースを捨てる（行末トリム相当）。
+  const units: { text: string; spaceBefore: boolean }[] = []
+  let buf = ''
+  let pendingSpace = false
+  for (const ch of oneLine) {
+    if (ch === ' ') {
+      // 半角スペース: バッファを確定し、次の単位に「スペース境界あり」を持たせる
+      if (buf) { units.push({ text: buf, spaceBefore: pendingSpace }); buf = ''; pendingSpace = false }
+      pendingSpace = true
+    } else {
+      buf += ch
+      if (BREAK_PUNCT.test(ch)) {
+        // 句読点: 句読点込みで確定
+        units.push({ text: buf, spaceBefore: pendingSpace })
+        buf = ''
+        pendingSpace = false
+      }
+    }
+  }
+  if (buf) units.push({ text: buf, spaceBefore: pendingSpace })
+
+  if (units.length === 0) return oneLine
+
+  // --- 2. 貪欲詰め + 長い塊のハード分割 ---
+  const lines: string[] = []
+  let cur = ''
+
+  for (const u of units) {
+    // 同一行に続けるときだけ単語境界のスペースを復元する（行頭では捨てる）。
+    const sep = cur !== '' && u.spaceBefore ? ' ' : ''
+    if (cur === '' || strWidth(cur) + strWidth(sep) + strWidth(u.text) <= maxPerLine) {
+      cur += sep + u.text
+    } else {
+      lines.push(cur)
+      cur = u.text
+    }
+
+    // cur 単体が maxPerLine を超える間はハード分割
+    while (strWidth(cur) > maxPerLine) {
+      let head = ''
+      let headW = 0
+      let i = 0
+      const chars = [...cur]
+      while (i < chars.length) {
+        const cw = charWidth(chars[i]!)
+        // 最低 1 文字は必ず取る（maxPerLine が 1 文字幅未満でも無限ループしない）。
+        if (head !== '' && headW + cw > maxPerLine) break
+        head += chars[i]!
+        headW += cw
+        i++
+      }
+      lines.push(head)
+      cur = chars.slice(i).join('')
+    }
+  }
+
+  if (cur) lines.push(cur)
+
+  return lines.join('\n')
+}
+
 function srtTimeToSeconds(t: string): number {
   const m = t.match(/^(\d+):(\d+):(\d+)[,.](\d+)$/)
   if (!m) return 0
@@ -178,24 +265,42 @@ function secondsToFcpTime(seconds: number, fpsNum: number, fpsDen: number): stri
   return `${frames * fpsDen}/${fpsNum}s`
 }
 
+/**
+ * wrapAutoFit=true のときはフォントサイズと動画幅から1行の最大文字数を自動算出。
+ * wrapAutoFit=false のときは手動設定の maxCharsPerLine をそのまま返す。
+ */
+export function resolveMaxCharsPerLine(
+  videoWidth: number,
+  fontSize: number,
+  style: FcpxmlSubtitleStyle
+): number {
+  if (style.wrapAutoFit) {
+    return Math.max(1, Math.floor((videoWidth / Math.max(1, fontSize)) * style.wrapAutoFitRatio))
+  }
+  return style.maxCharsPerLine
+}
+
 function buildCaption(
   cue: SrtCue,
   index: number,
   fpsNum: number,
   fpsDen: number,
-  sourceStartSec: number
+  sourceStartSec: number,
+  maxCharsPerLine: number
 ): string {
   const cueStart = srtTimeToSeconds(cue.start)
   const cueEnd = srtTimeToSeconds(cue.end)
   const minDur = fpsDen / fpsNum
   const dur = Math.max(cueEnd - cueStart, minDur)
-  const text = escapeXml(cue.text.replace(/\s*\n\s*/g, ' ').trim())
-  if (!text) return ''
+  const oneLine = cue.text.replace(/\s*\n\s*/g, ' ').trim()
+  if (!oneLine) return ''
+  const wrapped = wrapText(oneLine, maxCharsPerLine)
+  const text = escapeXml(wrapped)
   const styleId = `ts${index}`
   // caption.offset は親 (asset-clip) のローカル時間 = asset-clip.start からの相対ではなく、
   // FCPX のキャプションでは asset の source TC 上の絶対位置で表現する (FCPX export 観察結果)。
   const offsetInSource = sourceStartSec + cueStart
-  const captionName = text.length > 50 ? text.slice(0, 50) : text
+  const captionName = escapeXml(oneLine.length > 50 ? oneLine.slice(0, 50) : oneLine)
   return `              <caption lane="1" offset="${secondsToFcpTime(offsetInSource, fpsNum, fpsDen)}" name="${captionName}" start="3600s" duration="${secondsToFcpTime(dur, fpsNum, fpsDen)}" role="SRT?captionFormat=SRT.ja">
                 <text placement="bottom">
                   <text-style ref="${styleId}">${text}</text-style>
@@ -213,17 +318,20 @@ function buildTitle(
   fpsNum: number,
   fpsDen: number,
   sourceStartSec: number,
-  style: FcpxmlSubtitleStyle
+  style: FcpxmlSubtitleStyle,
+  maxCharsPerLine: number
 ): string {
   const cueStart = srtTimeToSeconds(cue.start)
   const cueEnd = srtTimeToSeconds(cue.end)
   const minDur = fpsDen / fpsNum
   const dur = Math.max(cueEnd - cueStart, minDur)
-  const text = escapeXml(cue.text.replace(/\s*\n\s*/g, ' ').trim())
-  if (!text) return ''
+  const oneLine = cue.text.replace(/\s*\n\s*/g, ' ').trim()
+  if (!oneLine) return ''
+  const wrapped = wrapText(oneLine, maxCharsPerLine)
+  const text = escapeXml(wrapped)
   const styleId = `ts${index}`
   const offsetInSource = sourceStartSec + cueStart
-  const titleName = text.length > 50 ? text.slice(0, 50) : text
+  const titleName = escapeXml(oneLine.length > 50 ? oneLine.slice(0, 50) : oneLine)
   // adjust-transform position の単位は内部的に canvas_height/100 倍されるスケールなので、
   // 1080p で -360px (下 1/3) を出したいなら XML 上は -33 程度 (= -360 / 10.8) が必要。
   // 解像度に対して相対的な値になるので resolution-independent にしてある。
@@ -311,12 +419,25 @@ export async function generateFcpxml(
 
   const useTitle = style.mode === 'title'
 
+  // caption の固定フォントサイズ (buildCaption 内の fontSize="13" に合わせる)
+  const CAPTION_FONT_SIZE = 13
+  const resolvedMaxChars = useTitle
+    ? resolveMaxCharsPerLine(probe.width, style.fontSize, style)
+    : resolveMaxCharsPerLine(probe.width, CAPTION_FONT_SIZE, style)
+  log(
+    `[fcpxml] wrap: ${style.wrapAutoFit ? 'auto' : 'manual'}, ` +
+      `maxCharsPerLine=${resolvedMaxChars}` +
+      (style.wrapAutoFit
+        ? ` (${probe.width}px / ${useTitle ? style.fontSize : CAPTION_FONT_SIZE}pt × ${style.wrapAutoFitRatio})`
+        : '')
+  )
+
   let subtitlesXml = ''
   let i = 0
   for (const cue of cues) {
     const c = useTitle
-      ? buildTitle(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec, style)
-      : buildCaption(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec)
+      ? buildTitle(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec, style, resolvedMaxChars)
+      : buildCaption(cue, ++i, probe.fpsNum, probe.fpsDen, sourceStartSec, resolvedMaxChars)
     if (c) subtitlesXml += c
   }
 
