@@ -34,3 +34,14 @@ export function serializeSrt(cues: SrtCue[]): string {
       .join('\n\n') + '\n'
   )
 }
+
+export function secondsToSrtTime(sec: number): string {
+  const total = Number.isFinite(sec) && sec > 0 ? sec : 0
+  const ms = Math.round(total * 1000)
+  const hours = Math.floor(ms / 3_600_000)
+  const minutes = Math.floor((ms % 3_600_000) / 60_000)
+  const seconds = Math.floor((ms % 60_000) / 1000)
+  const millis = ms % 1000
+  const pad = (n: number, w: number): string => String(n).padStart(w, '0')
+  return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(seconds, 2)},${pad(millis, 3)}`
+}

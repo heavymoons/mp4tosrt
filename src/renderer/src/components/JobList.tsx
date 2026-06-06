@@ -21,6 +21,7 @@ const STATUS_LABEL_KEY: Record<Job['status'], LocaleKey> = {
 }
 
 const PHASE_LABEL_KEY: Partial<Record<Job['phase'], LocaleKey>> = {
+  'download-model': 'job.phase.download-model',
   postprocess: 'job.phase.postprocess',
   'awaiting-prompt': 'job.phase.awaiting-prompt',
   'llm-correct': 'job.phase.llm-correct',

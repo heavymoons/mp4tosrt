@@ -6,7 +6,7 @@
 
 export const EN = {
   // App header
-  'app.subtitle': 'Video → SRT subtitles (ffmpeg + mlx-whisper)',
+  'app.subtitle': 'Video → SRT subtitles (ffmpeg + VibeVoice-ASR / mlx-whisper)',
   'app.manual': 'Manual',
   'app.locale.ja': '日本語',
   'app.locale.en': 'English',
@@ -19,6 +19,8 @@ export const EN = {
   'tools.copy': 'Copy',
   'tools.copied': 'Copied',
   'tools.mlxHint': 'On first pipx use, reopen the terminal or run `pipx ensurepath`',
+  'tools.vibevoiceHint':
+    'On first pipx use, reopen the terminal or run `pipx ensurepath`. The model is downloaded from Hugging Face on first run.',
 
   // DropZone
   'drop.disabled': 'Please install the dependencies first',
@@ -29,6 +31,9 @@ export const EN = {
   'settings.title': 'Settings',
   'settings.advanced.show': 'Show advanced…',
   'settings.advanced.hide': 'Hide advanced',
+  'settings.group.output': 'Output',
+  'settings.group.transcription': 'Transcription engine',
+  'settings.group.performance': 'Performance',
   'settings.outputDir': 'Output folder',
   'settings.outputDir.empty': '(unset — picked when adding files)',
   'settings.outputDir.change': 'Change…',
@@ -54,8 +59,29 @@ export const EN = {
   'settings.fcpxml.vertical.top': 'Top',
   'settings.fcpxml.vertical.middle': 'Middle',
   'settings.fcpxml.vertical.bottom': 'Bottom (lower-third)',
+  'settings.fcpxml.maxCharsPerLine': 'Max characters per line (full-width count; wraps at punctuation/space; 0 = off)',
+  'settings.fcpxml.wrapAutoFit': 'Auto-fit wrap to font size',
+  'settings.fcpxml.wrapAutoFitRatio': 'Wrap ratio (videoWidth ÷ fontSize × ratio; smaller = shorter lines)',
   'settings.fcpxml.font': 'Font',
   'settings.fcpxml.fontSize': 'Font size (pt)',
+  'settings.engine': 'Transcription engine',
+  'settings.engine.mlxWhisper': 'mlx-whisper (stable fallback)',
+  'settings.engine.vibevoice': 'VibeVoice-ASR (speaker-aware, recommended)',
+  'settings.engine.note':
+    'VibeVoice-ASR / Gemma 4 are a bleeding-edge stack with no stable release yet and may break in the future. In local testing their quality was overwhelmingly better. Switch to the mlx-whisper / Qwen fallback if you prefer stability.',
+  'settings.vibevoice.model': 'VibeVoice model',
+  'settings.vibevoice.speakerLabels': 'Prefix speaker labels in the text',
+  'settings.vibevoice.speakerLabels.hint':
+    '(adds "話者0: " etc. to each cue; uses JSON output internally)',
+  'settings.vibevoice.note':
+    'Language is auto-detected. Audio is capped at 59 min (excess is truncated).',
+  'settings.vibevoice.download.intro':
+    'The first run requires downloading the selected model (~{size} GB). It downloads automatically when transcription starts, but you can pre-fetch it here. This takes a few minutes.',
+  'settings.vibevoice.status.downloaded': '✓ Downloaded',
+  'settings.vibevoice.status.notDownloaded': 'Not downloaded',
+  'settings.vibevoice.download': 'Download model',
+  'settings.vibevoice.download.progress': '{cur} / {total} ({pct}%)',
+  'settings.vibevoice.download.progress.unknown': '{cur} downloading…',
   'settings.model': 'Whisper model',
   'settings.language': 'Language',
   'settings.language.auto': 'Auto-detect',
@@ -124,6 +150,8 @@ export const EN = {
   'llm.shared.placeholder':
     'e.g. Videos from my YouTube channel "heavymoons". Proper nouns and military/political terms appear often.',
   'llm.model': 'Model',
+  'llm.model.note':
+    'Gemma 4 is a bleeding-edge stack (no stable release yet, may break), but performed overwhelmingly better in local testing. Choose the Qwen fallback if you prefer stability.',
   'llm.batchSize': 'Batch size',
   'llm.batchSize.hint': '(cues per request)',
   'llm.contextSize': 'Context size',
@@ -173,6 +201,7 @@ export const EN = {
   'job.status.done': 'Done',
   'job.status.error': 'Error',
   'job.status.cancelled': 'Cancelled',
+  'job.phase.download-model': 'Downloading model',
   'job.phase.postprocess': 'Post-processing',
   'job.phase.awaiting-prompt': 'Awaiting prompt',
   'job.phase.llm-correct': 'LLM correcting',
@@ -231,7 +260,7 @@ export const EN = {
 
 export const JA: Messages = {
   // App header
-  'app.subtitle': '動画ファイル → SRT 字幕（ffmpeg + mlx-whisper）',
+  'app.subtitle': '動画ファイル → SRT 字幕（ffmpeg + VibeVoice-ASR / mlx-whisper）',
   'app.manual': 'マニュアル',
   'app.locale.ja': '日本語',
   'app.locale.en': 'English',
@@ -244,6 +273,8 @@ export const JA: Messages = {
   'tools.copy': 'コピー',
   'tools.copied': 'コピー済',
   'tools.mlxHint': 'pipx 初回利用時はターミナルを開き直すか pipx ensurepath が必要',
+  'tools.vibevoiceHint':
+    'pipx 初回利用時はターミナルを開き直すか pipx ensurepath が必要。モデルは初回実行時に Hugging Face からダウンロードされる',
 
   // DropZone
   'drop.disabled': '依存ツールをセットアップしてください',
@@ -254,6 +285,9 @@ export const JA: Messages = {
   'settings.title': '設定',
   'settings.advanced.show': '詳細設定…',
   'settings.advanced.hide': '詳細を閉じる',
+  'settings.group.output': '出力',
+  'settings.group.transcription': '文字起こしエンジン',
+  'settings.group.performance': '処理性能',
   'settings.outputDir': '出力先',
   'settings.outputDir.empty': '(未指定 — ファイル追加時に選択)',
   'settings.outputDir.change': '変更…',
@@ -279,8 +313,29 @@ export const JA: Messages = {
   'settings.fcpxml.vertical.top': '上',
   'settings.fcpxml.vertical.middle': '中央',
   'settings.fcpxml.vertical.bottom': '下 (下 1/3)',
+  'settings.fcpxml.maxCharsPerLine': '1行の最大文字数（全角換算・句読点/空白で折返し・0で無効）',
+  'settings.fcpxml.wrapAutoFit': 'フォントサイズに連動して自動折返し',
+  'settings.fcpxml.wrapAutoFitRatio': '折返し係数（動画幅÷フォントサイズ×係数。小さいほど短く余白大）',
   'settings.fcpxml.font': 'フォント',
   'settings.fcpxml.fontSize': 'フォントサイズ (pt)',
+  'settings.engine': '文字起こしエンジン',
+  'settings.engine.mlxWhisper': 'mlx-whisper（安定版・予備）',
+  'settings.engine.vibevoice': 'VibeVoice-ASR（話者対応・推奨）',
+  'settings.engine.note':
+    'VibeVoice-ASR / Gemma 4 は安定版がまだ無い最新スタックで、将来壊れる可能性があります。ただし手元検証では性能が圧倒的でした。安定重視なら予備の mlx-whisper / Qwen に切り替えてください。',
+  'settings.vibevoice.model': 'VibeVoice モデル',
+  'settings.vibevoice.speakerLabels': '話者ラベルを本文に付与',
+  'settings.vibevoice.speakerLabels.hint':
+    '(各キューに「話者0: 」等を前置。内部的に JSON 出力を使用)',
+  'settings.vibevoice.note':
+    '言語は自動判定。音声は59分上限（超過分は切り捨て）。',
+  'settings.vibevoice.download.intro':
+    '初回は選択モデルのDL（約{size} GB）が必要です。書き起こし開始時に自動でDLされますが、ここで事前取得もできます。完了まで数分かかります。',
+  'settings.vibevoice.status.downloaded': '✓ 取得済み',
+  'settings.vibevoice.status.notDownloaded': '未取得',
+  'settings.vibevoice.download': 'モデルをダウンロード',
+  'settings.vibevoice.download.progress': '{cur} / {total} ({pct}%)',
+  'settings.vibevoice.download.progress.unknown': '{cur} ダウンロード中…',
   'settings.model': 'Whisper モデル',
   'settings.language': '言語',
   'settings.language.auto': '自動検出',
@@ -349,6 +404,8 @@ export const JA: Messages = {
   'llm.shared.placeholder':
     '例: 自分のYouTubeチャンネル「heavymoons」の動画です。日本語の固有名詞や軍事/政治用語が頻出します。',
   'llm.model': 'モデル',
+  'llm.model.note':
+    'Gemma 4 は安定版がまだ無い最新スタック（将来壊れる可能性あり）ですが、手元検証では性能が圧倒的でした。安定重視なら予備の Qwen を選んでください。',
   'llm.batchSize': 'バッチサイズ',
   'llm.batchSize.hint': '(1回のリクエストで送るキュー数)',
   'llm.contextSize': 'コンテキストサイズ',
@@ -397,6 +454,7 @@ export const JA: Messages = {
   'job.status.done': '完了',
   'job.status.error': 'エラー',
   'job.status.cancelled': '中止',
+  'job.phase.download-model': 'モデルDL中',
   'job.phase.postprocess': '後処理',
   'job.phase.awaiting-prompt': 'プロンプト入力待ち',
   'job.phase.llm-correct': 'LLM校正中',

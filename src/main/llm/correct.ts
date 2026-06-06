@@ -233,6 +233,7 @@ export async function correctCues(
     maxMergeSize?: number
     log: (s: string) => void
     onProgress?: (done: number, total: number) => void
+    shouldCancel?: () => boolean
   }
 ): Promise<SrtCue[]> {
   const {
@@ -244,7 +245,8 @@ export async function correctCues(
     allowMerge = false,
     maxMergeSize: rawMax = 1,
     log,
-    onProgress
+    onProgress,
+    shouldCancel
   } = options
 
   const overlap = Math.max(0, Math.min(batchOverlap, Math.max(0, batchSize - 1)))
@@ -262,6 +264,10 @@ export async function correctCues(
   const adoptedByBatch: GlobalRow[][] = []
 
   for (let k = 0; k < batches.length; k++) {
+    // キャンセル時は break ではなく早期 return（break だと未処理バッチの
+    // adoptedByBatch[k] が未定義になり、後段の collation で TypeError になる）。
+    // 呼び出し側 (runLlmCorrection) は cancelled を再チェックし結果を書き込まない。
+    if (shouldCancel?.()) { log('[llm] cancelled — stopping batch loop'); return cues }
     const span = batches[k]!
     const batchCues = cues.slice(span.start, span.end)
     const batchLen = batchCues.length

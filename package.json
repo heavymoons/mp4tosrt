@@ -48,10 +48,6 @@
         {
           "target": "dmg",
           "arch": "arm64"
-        },
-        {
-          "target": "zip",
-          "arch": "arm64"
         }
       ],
       "category": "public.app-category.utilities",
@@ -78,26 +74,38 @@
         },
         {
           "x": 130,
-          "y": 340,
+          "y": 330,
+          "type": "file",
+          "path": "INSTALL.md"
+        },
+        {
+          "x": 270,
+          "y": 330,
+          "type": "file",
+          "path": "INSTALL.en.md"
+        },
+        {
+          "x": 410,
+          "y": 330,
+          "type": "file",
+          "path": "LICENSE"
+        },
+        {
+          "x": 130,
+          "y": 460,
           "type": "file",
           "path": "README.md"
         },
         {
           "x": 270,
-          "y": 340,
+          "y": 460,
           "type": "file",
           "path": "README.en.md"
-        },
-        {
-          "x": 410,
-          "y": 340,
-          "type": "file",
-          "path": "LICENSE"
         }
       ],
       "window": {
         "width": 540,
-        "height": 460
+        "height": 580
       }
     },
     "publish": null

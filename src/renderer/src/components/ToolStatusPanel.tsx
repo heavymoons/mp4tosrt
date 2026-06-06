@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import type { ToolStatus, ToolsCheck } from '../../../shared/types'
+import type { ToolStatus, ToolsCheck, TranscribeEngine } from '../../../shared/types'
 import { useT } from '../i18n'
 
 const FFMPEG_INSTALL = 'brew install ffmpeg'
 const MLX_INSTALL = 'brew install pipx && pipx ensurepath && pipx install mlx-whisper'
+const VIBEVOICE_INSTALL = 'brew install pipx && pipx ensurepath && pipx install mlx-audio'
 
 function CopyButton({ value }: { value: string }): JSX.Element {
   const t = useT()
@@ -65,13 +66,16 @@ function ToolRow({
 }
 
 export default function ToolStatusPanel({
-  tools, onRefresh
+  tools, engine, onRefresh
 }: {
   tools: ToolsCheck
+  engine: TranscribeEngine
   onRefresh: () => void
 }): JSX.Element {
   const t = useT()
-  const allFound = tools.ffmpeg.found && tools.mlxWhisper.found
+  const engineStatus =
+    engine === 'vibevoice-asr' ? tools.vibevoiceAsr : tools.mlxWhisper
+  const allFound = tools.ffmpeg.found && engineStatus.found
   return (
     <section className="card">
       <div className="card-head">
@@ -81,12 +85,21 @@ export default function ToolStatusPanel({
         </button>
       </div>
       <ToolRow name="ffmpeg" status={tools.ffmpeg} install={FFMPEG_INSTALL} />
-      <ToolRow
-        name="mlx_whisper"
-        status={tools.mlxWhisper}
-        install={MLX_INSTALL}
-        hint={t('tools.mlxHint')}
-      />
+      {engine === 'vibevoice-asr' ? (
+        <ToolRow
+          name="mlx_audio (VibeVoice-ASR)"
+          status={tools.vibevoiceAsr}
+          install={VIBEVOICE_INSTALL}
+          hint={t('tools.vibevoiceHint')}
+        />
+      ) : (
+        <ToolRow
+          name="mlx_whisper"
+          status={tools.mlxWhisper}
+          install={MLX_INSTALL}
+          hint={t('tools.mlxHint')}
+        />
+      )}
     </section>
   )
 }

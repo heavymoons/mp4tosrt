@@ -5,7 +5,8 @@ import type {
   ToolsCheck,
   LlmModelPreset,
   LlmModelStatus,
-  LlmDownloadProgress
+  LlmDownloadProgress,
+  VibeVoiceModelStatus
 } from '../shared/types'
 
 const api = {
@@ -62,6 +63,15 @@ const api = {
     const listener = (_e: unknown, p: LlmDownloadProgress): void => cb(p)
     ipcRenderer.on('llm:download-progress', listener)
     return () => ipcRenderer.removeListener('llm:download-progress', listener)
+  },
+  vibevoiceStatus: (modelId: string): Promise<VibeVoiceModelStatus> =>
+    ipcRenderer.invoke('vibevoice:status', modelId),
+  vibevoiceDownload: (modelId: string): Promise<void> =>
+    ipcRenderer.invoke('vibevoice:download', modelId),
+  onVibevoiceDownloadProgress: (cb: (p: LlmDownloadProgress) => void): (() => void) => {
+    const listener = (_e: unknown, p: LlmDownloadProgress): void => cb(p)
+    ipcRenderer.on('vibevoice:download-progress', listener)
+    return () => ipcRenderer.removeListener('vibevoice:download-progress', listener)
   }
 }
 
