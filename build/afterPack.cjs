@@ -17,7 +17,7 @@ module.exports = async function (context) {
   // 入ってしまい codesign が拒否するため、afterPack で外側に置く方式。
   // DMG (dmg.contents 参照) も ZIP (appOutDir まるごとアーカイブ) も拾える。
   const projectDir = context.packager.projectDir
-  const sidecars = ['README.md', 'README.en.md', 'LICENSE']
+  const sidecars = ['INSTALL.md', 'INSTALL.en.md', 'README.md', 'README.en.md', 'LICENSE']
   for (const name of sidecars) {
     const src = join(projectDir, name)
     if (!existsSync(src)) {
