@@ -98,7 +98,10 @@ export default function App(): JSX.Element {
   const jobsList = [...jobs.values()].sort(
     (a, b) => (a.startedAt ?? Number.MAX_SAFE_INTEGER) - (b.startedAt ?? Number.MAX_SAFE_INTEGER)
   )
-  const allFound = Boolean(tools?.ffmpeg.found && tools?.mlxWhisper.found)
+  const engine = settings?.engine ?? 'mlx-whisper'
+  const engineFound =
+    engine === 'vibevoice-asr' ? tools?.vibevoiceAsr.found : tools?.mlxWhisper.found
+  const allFound = Boolean(tools?.ffmpeg.found && engineFound)
   const locale: Locale = settings?.uiLocale ?? detectLocale()
 
   const setLocale = (next: Locale): void => {
@@ -110,6 +113,7 @@ export default function App(): JSX.Element {
       <AppShell
         tools={tools}
         settings={settings}
+        engine={engine}
         jobs={jobsList}
         helpOpen={helpOpen}
         allFound={allFound}
@@ -134,6 +138,7 @@ export default function App(): JSX.Element {
 type ShellProps = {
   tools: ToolsCheck | null
   settings: Settings | null
+  engine: Settings['engine']
   jobs: Job[]
   helpOpen: boolean
   allFound: boolean
@@ -153,7 +158,7 @@ type ShellProps = {
 }
 
 function AppShell({
-  tools, settings, jobs, helpOpen, allFound, locale,
+  tools, settings, engine, jobs, helpOpen, allFound, locale,
   onLocaleChange, onOpenHelp, onCloseHelp, onRefreshTools, onPickOutputDir,
   onUpdateSettings, onAddFiles, onPickFiles, onCancelJob, onRemoveJob, onReveal, onClearFinished
 }: ShellProps): JSX.Element {
@@ -179,7 +184,7 @@ function AppShell({
         </div>
       </header>
 
-      {tools && <ToolStatusPanel tools={tools} onRefresh={onRefreshTools} />}
+      {tools && <ToolStatusPanel tools={tools} engine={engine} onRefresh={onRefreshTools} />}
 
       {settings && (
         <SettingsPanel

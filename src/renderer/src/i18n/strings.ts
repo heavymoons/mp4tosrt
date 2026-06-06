@@ -19,6 +19,8 @@ export const EN = {
   'tools.copy': 'Copy',
   'tools.copied': 'Copied',
   'tools.mlxHint': 'On first pipx use, reopen the terminal or run `pipx ensurepath`',
+  'tools.vibevoiceHint':
+    'On first pipx use, reopen the terminal or run `pipx ensurepath`. The model is downloaded from Hugging Face on first run.',
 
   // DropZone
   'drop.disabled': 'Please install the dependencies first',
@@ -56,6 +58,22 @@ export const EN = {
   'settings.fcpxml.vertical.bottom': 'Bottom (lower-third)',
   'settings.fcpxml.font': 'Font',
   'settings.fcpxml.fontSize': 'Font size (pt)',
+  'settings.engine': 'Transcription engine',
+  'settings.engine.mlxWhisper': 'mlx-whisper',
+  'settings.engine.vibevoice': 'VibeVoice-ASR (speaker-aware)',
+  'settings.vibevoice.model': 'VibeVoice model',
+  'settings.vibevoice.speakerLabels': 'Prefix speaker labels in the text',
+  'settings.vibevoice.speakerLabels.hint':
+    '(adds "話者0: " etc. to each cue; uses JSON output internally)',
+  'settings.vibevoice.note':
+    'Language is auto-detected. Audio is capped at 59 min (excess is truncated).',
+  'settings.vibevoice.download.intro':
+    'The first run requires downloading the selected model (~{size} GB). It downloads automatically when transcription starts, but you can pre-fetch it here. This takes a few minutes.',
+  'settings.vibevoice.status.downloaded': '✓ Downloaded',
+  'settings.vibevoice.status.notDownloaded': 'Not downloaded',
+  'settings.vibevoice.download': 'Download model',
+  'settings.vibevoice.download.progress': '{cur} / {total} ({pct}%)',
+  'settings.vibevoice.download.progress.unknown': '{cur} downloading…',
   'settings.model': 'Whisper model',
   'settings.language': 'Language',
   'settings.language.auto': 'Auto-detect',
@@ -173,6 +191,7 @@ export const EN = {
   'job.status.done': 'Done',
   'job.status.error': 'Error',
   'job.status.cancelled': 'Cancelled',
+  'job.phase.download-model': 'Downloading model',
   'job.phase.postprocess': 'Post-processing',
   'job.phase.awaiting-prompt': 'Awaiting prompt',
   'job.phase.llm-correct': 'LLM correcting',
@@ -244,6 +263,8 @@ export const JA: Messages = {
   'tools.copy': 'コピー',
   'tools.copied': 'コピー済',
   'tools.mlxHint': 'pipx 初回利用時はターミナルを開き直すか pipx ensurepath が必要',
+  'tools.vibevoiceHint':
+    'pipx 初回利用時はターミナルを開き直すか pipx ensurepath が必要。モデルは初回実行時に Hugging Face からダウンロードされる',
 
   // DropZone
   'drop.disabled': '依存ツールをセットアップしてください',
@@ -281,6 +302,22 @@ export const JA: Messages = {
   'settings.fcpxml.vertical.bottom': '下 (下 1/3)',
   'settings.fcpxml.font': 'フォント',
   'settings.fcpxml.fontSize': 'フォントサイズ (pt)',
+  'settings.engine': '文字起こしエンジン',
+  'settings.engine.mlxWhisper': 'mlx-whisper',
+  'settings.engine.vibevoice': 'VibeVoice-ASR (話者対応)',
+  'settings.vibevoice.model': 'VibeVoice モデル',
+  'settings.vibevoice.speakerLabels': '話者ラベルを本文に付与',
+  'settings.vibevoice.speakerLabels.hint':
+    '(各キューに「話者0: 」等を前置。内部的に JSON 出力を使用)',
+  'settings.vibevoice.note':
+    '言語は自動判定。音声は59分上限（超過分は切り捨て）。',
+  'settings.vibevoice.download.intro':
+    '初回は選択モデルのDL（約{size} GB）が必要です。書き起こし開始時に自動でDLされますが、ここで事前取得もできます。完了まで数分かかります。',
+  'settings.vibevoice.status.downloaded': '✓ 取得済み',
+  'settings.vibevoice.status.notDownloaded': '未取得',
+  'settings.vibevoice.download': 'モデルをダウンロード',
+  'settings.vibevoice.download.progress': '{cur} / {total} ({pct}%)',
+  'settings.vibevoice.download.progress.unknown': '{cur} ダウンロード中…',
   'settings.model': 'Whisper モデル',
   'settings.language': '言語',
   'settings.language.auto': '自動検出',
@@ -397,6 +434,7 @@ export const JA: Messages = {
   'job.status.done': '完了',
   'job.status.error': 'エラー',
   'job.status.cancelled': '中止',
+  'job.phase.download-model': 'モデルDL中',
   'job.phase.postprocess': '後処理',
   'job.phase.awaiting-prompt': 'プロンプト入力待ち',
   'job.phase.llm-correct': 'LLM校正中',

@@ -68,9 +68,28 @@ export async function checkMlxWhisper(): Promise<ToolStatus> {
   }
 }
 
-export async function checkAllTools(): Promise<{ ffmpeg: ToolStatus; mlxWhisper: ToolStatus }> {
-  const [ffmpeg, mlxWhisper] = await Promise.all([checkFfmpeg(), checkMlxWhisper()])
-  return { ffmpeg, mlxWhisper }
+export async function checkVibeVoiceAsr(): Promise<ToolStatus> {
+  const p = await which('mlx_audio.stt.generate')
+  if (!p) return { found: false }
+  try {
+    await execFileP(p, ['--help'], { maxBuffer: 4 * 1024 * 1024 })
+    return { found: true, path: p, version: 'installed' }
+  } catch (e) {
+    return { found: false, path: p, error: errMsg(e) }
+  }
+}
+
+export async function checkAllTools(): Promise<{
+  ffmpeg: ToolStatus
+  mlxWhisper: ToolStatus
+  vibevoiceAsr: ToolStatus
+}> {
+  const [ffmpeg, mlxWhisper, vibevoiceAsr] = await Promise.all([
+    checkFfmpeg(),
+    checkMlxWhisper(),
+    checkVibeVoiceAsr()
+  ])
+  return { ffmpeg, mlxWhisper, vibevoiceAsr }
 }
 
 function errMsg(e: unknown): string {

@@ -3,7 +3,8 @@ import { Pipeline, jobLogPath } from './pipeline'
 import type {
   Job,
   Settings as PipelineSettings,
-  LlmModelStatus
+  LlmModelStatus,
+  VibeVoiceModelStatus
 } from '../shared/types'
 import { checkAllTools } from './tools'
 import { LLM_MODEL_PRESETS, findPreset } from './llm/presets'
@@ -14,6 +15,12 @@ import {
   onDownloadProgress,
   unloadModel
 } from './llm/manager'
+import {
+  downloadVibeVoiceModel,
+  isVibeVoiceModelDownloaded,
+  onVibeVoiceDownloadProgress
+} from './vibevoiceModel'
+import { findVibeVoicePreset } from '../shared/vibevoiceModels'
 import {
   readPersistedSettings,
   writePersistedSettings,
@@ -33,7 +40,10 @@ import { registerVideoProtocol } from './preview'
 import { startMediaServer, getMediaServerPort } from './mediaServer'
 
 const DEFAULT_SETTINGS: PipelineSettings = {
+  engine: 'mlx-whisper',
   model: 'mlx-community/whisper-large-v3-turbo',
+  vibevoiceModel: 'mlx-community/VibeVoice-ASR-4bit',
+  vibevoiceSpeakerLabels: false,
   ffmpegConcurrency: 2,
   whisperConcurrency: 1,
   audioFilters: {
@@ -134,6 +144,12 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
   onDownloadProgress(p => {
     if (!win.isDestroyed()) {
       win.webContents.send('llm:download-progress', p)
+    }
+  })
+
+  onVibeVoiceDownloadProgress(p => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('vibevoice:download-progress', p)
     }
   })
 
@@ -262,6 +278,19 @@ export async function registerIpcHandlers(win: BrowserWindow): Promise<void> {
 
   ipcMain.handle('llm:unload', async () => {
     await unloadModel()
+  })
+
+  ipcMain.handle(
+    'vibevoice:status',
+    async (_e, modelId: string): Promise<VibeVoiceModelStatus> => {
+      const downloaded = await isVibeVoiceModelDownloaded(modelId)
+      return { modelId, downloaded }
+    }
+  )
+
+  ipcMain.handle('vibevoice:download', async (_e, modelId: string) => {
+    if (!findVibeVoicePreset(modelId)) throw new Error(`unknown vibevoice preset: ${modelId}`)
+    await downloadVibeVoiceModel(modelId)
   })
 
   ipcMain.handle('media:port', () => getMediaServerPort())

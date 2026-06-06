@@ -7,9 +7,10 @@ import { Semaphore } from './queue'
 import { applyDictionaryToFile, loadReplaceRules } from './replace'
 import { applyHallucinationSuppression } from './suppress'
 import { generateFcpxml } from './fcpxml'
-import { parseSrt, serializeSrt } from './srt'
+import { parseSrt, serializeSrt, secondsToSrtTime, type SrtCue } from './srt'
 import { ensureModelLoaded } from './llm/manager'
 import { correctCues } from './llm/correct'
+import { isVibeVoiceModelDownloaded, downloadVibeVoiceModel } from './vibevoiceModel'
 import type { Job, Settings as PipelineSettings, AudioFilters } from '../shared/types'
 
 export type { Job, PipelineSettings }
@@ -348,7 +349,9 @@ export class Pipeline {
         if (this.jobs.get(id)?.status === 'cancelled') return
         this.update(id, { status: 'transcribing', phase: 'transcribe', progress: 0 })
         await fs.mkdir(job.outputDir, { recursive: true })
-        const outputPath = await this.runWhisper(id, tempWav!, job.outputDir, job.inputPath)
+        const outputPath = this.settings.engine === 'vibevoice-asr'
+          ? await this.runVibeVoiceAsr(id, tempWav!, job.outputDir, job.inputPath)
+          : await this.runWhisper(id, tempWav!, job.outputDir, job.inputPath)
         this.update(id, { outputPath })
 
         if (this.settings.suppressHallucinations) {
@@ -574,6 +577,107 @@ export class Pipeline {
     })
   }
 
+  private async runVibeVoiceAsr(
+    id: string,
+    audio: string,
+    outDir: string,
+    originalInput: string
+  ): Promise<string> {
+    // VibeVoice は音声 59 分上限。超過分はライブラリが警告して切り捨てるため
+    // ここで事前に検知してユーザーに明示しておく（実行は継続する）。
+    const dur = await this.getDuration(originalInput)
+    if (dur && dur > 59 * 60) {
+      this.appendLog(
+        id,
+        `[vibevoice] ⚠️ 音声が${(dur / 60).toFixed(1)}分で59分上限を超過。末尾が切り捨てられます`
+      )
+    }
+
+    // 初回はモデル（5.7GB / 16.7GB）が未取得。spawn 前に明示 DL してフェーズ・進捗を出す。
+    // 無言 DL で「Fetching 4 files: 25%」のまま固まって見える問題を回避する。
+    const model = this.settings.vibevoiceModel
+    if (!(await isVibeVoiceModelDownloaded(model))) {
+      this.update(id, { phase: 'download-model', progress: 0 })
+      this.appendLog(
+        id,
+        `[vibevoice] モデル未取得。初回ダウンロード開始 (${model}) — 数分かかります`
+      )
+      await downloadVibeVoiceModel(model, {
+        onProgress: p => {
+          if (p.totalBytes) {
+            this.update(id, {
+              progress: Math.min(99, Math.round((p.downloadedBytes / p.totalBytes) * 100))
+            })
+          }
+        },
+        onProc: p => this.procs.set(id, p)
+      })
+      this.appendLog(id, `[vibevoice] モデルDL完了`)
+      this.update(id, { phase: 'transcribe', progress: 0 })
+    }
+
+    const finalStem = basename(originalInput, extname(originalInput))
+    const outStem = join(outDir, finalStem)
+    const finalSrt = outStem + '.srt'
+    const speakerLabels = this.settings.vibevoiceSpeakerLabels
+
+    return new Promise<string>((resolve, reject) => {
+      const args: string[] = [
+        '--model', this.settings.vibevoiceModel,
+        '--audio', audio,
+        '--output-path', outStem,
+        '--format', speakerLabels ? 'json' : 'srt',
+        '--max-tokens', '16384',
+        '--verbose'
+      ]
+      const proc = spawn('mlx_audio.stt.generate', args)
+      this.procs.set(id, proc)
+      this.appendLog(id, `[mlx_audio.stt.generate] ${args.join(' ')}`)
+
+      const handleChunk = (chunk: Buffer): void => {
+        const text = chunk.toString()
+        for (const line of text.split(/\r?\n/)) {
+          if (!line.trim()) continue
+          this.appendLog(id, line)
+          const m = line.match(/(\d+(?:\.\d+)?)\s*%/)
+          if (m) {
+            const pct = Math.min(99, Math.round(parseFloat(m[1]!)))
+            this.update(id, { progress: pct })
+          }
+        }
+      }
+      proc.stdout.on('data', handleChunk)
+      proc.stderr.on('data', handleChunk)
+
+      proc.on('error', err => reject(err))
+      proc.on('close', async code => {
+        if (code !== 0) {
+          if (code === null) reject(new Error('mlx_audio.stt.generate was terminated'))
+          else reject(new Error(`mlx_audio.stt.generate exited with code ${code}`))
+          return
+        }
+        try {
+          if (!speakerLabels) {
+            // --format srt は output-path のステムで `<stem>.srt` を直接書く。
+            // ステムは finalStem と一致するためリネーム不要。存在だけ確認する。
+            await fs.access(finalSrt)
+            resolve(finalSrt)
+            return
+          }
+          // 話者ラベル ON: JSON を読んで自前で SRT 化する。
+          const jsonPath = outStem + '.json'
+          const raw = await fs.readFile(jsonPath, 'utf-8')
+          const cues = vibevoiceJsonToCues(raw, speakerLabels)
+          await fs.writeFile(finalSrt, serializeSrt(cues), 'utf-8')
+          await fs.unlink(jsonPath).catch(() => undefined)
+          resolve(finalSrt)
+        } catch (e) {
+          reject(new Error(`failed to finalize vibevoice srt: ${errMsg(e)}`))
+        }
+      })
+    })
+  }
+
   private async runGenerateFcpxml(
     id: string,
     videoPath: string,
@@ -726,6 +830,38 @@ export function toIso6392(code?: string): string | undefined {
   if (!code) return undefined
   if (code.length === 3) return code
   return ISO_639_1_TO_2[code] ?? code
+}
+
+type VibeVoiceSegment = {
+  start?: number
+  end?: number
+  text?: string
+  speaker_id?: number | string
+}
+
+export function vibevoiceJsonToCues(raw: string, speakerLabels: boolean): SrtCue[] {
+  const parsed: unknown = JSON.parse(raw)
+  // 配列直下、もしくは { segments: [...] } 形式の両方を許容する。
+  const segs: VibeVoiceSegment[] = Array.isArray(parsed)
+    ? (parsed as VibeVoiceSegment[])
+    : Array.isArray((parsed as { segments?: unknown }).segments)
+      ? ((parsed as { segments: VibeVoiceSegment[] }).segments)
+      : []
+  const cues: SrtCue[] = []
+  for (const s of segs) {
+    const body = (s.text ?? '').trim()
+    if (!body) continue
+    const text =
+      speakerLabels && s.speaker_id != null
+        ? `話者${s.speaker_id}: ${body}`
+        : body
+    cues.push({
+      start: secondsToSrtTime(Number(s.start) || 0),
+      end: secondsToSrtTime(Number(s.end) || 0),
+      text
+    })
+  }
+  return cues
 }
 
 export function buildFilterChain(f: AudioFilters): string {

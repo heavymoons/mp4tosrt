@@ -10,6 +10,7 @@ export type JobStatus =
 export type JobPhase =
   | 'idle'
   | 'convert'
+  | 'download-model'
   | 'transcribe'
   | 'postprocess'
   | 'awaiting-prompt'
@@ -71,8 +72,13 @@ export type LlmSettings = {
   maxMergeSize: number
 }
 
+export type TranscribeEngine = 'mlx-whisper' | 'vibevoice-asr'
+
 export type Settings = {
+  engine: TranscribeEngine
   model: string
+  vibevoiceModel: string
+  vibevoiceSpeakerLabels: boolean
   ffmpegConcurrency: number
   whisperConcurrency: number
   audioFilters: AudioFilters
@@ -107,6 +113,11 @@ export type LlmModelStatus = {
   loaded: boolean
 }
 
+export type VibeVoiceModelStatus = {
+  modelId: string
+  downloaded: boolean
+}
+
 export type LlmDownloadProgress = {
   modelId: string
   totalBytes?: number
@@ -125,4 +136,5 @@ export type ToolStatus = {
 export type ToolsCheck = {
   ffmpeg: ToolStatus
   mlxWhisper: ToolStatus
+  vibevoiceAsr: ToolStatus
 }

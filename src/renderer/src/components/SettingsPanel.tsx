@@ -1,5 +1,16 @@
-import React, { useState } from 'react'
-import type { Settings, AudioFilters, FcpxmlSubtitleStyle } from '../../../shared/types'
+import React, { useEffect, useState } from 'react'
+import type {
+  Settings,
+  AudioFilters,
+  FcpxmlSubtitleStyle,
+  TranscribeEngine,
+  VibeVoiceModelStatus,
+  LlmDownloadProgress
+} from '../../../shared/types'
+import {
+  VIBEVOICE_MODEL_PRESETS,
+  findVibeVoicePreset
+} from '../../../shared/vibevoiceModels'
 import LlmPanel from './LlmPanel'
 import FileEditor from './FileEditor'
 import { useT } from '../i18n'
@@ -14,6 +25,108 @@ const MODEL_PRESETS = [
   'mlx-community/whisper-tiny-mlx',
   'kaiinui/kotoba-whisper-v2.0-mlx'
 ]
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let v = bytes
+  let i = 0
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i++
+  }
+  return `${v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2)} ${units[i]}`
+}
+
+function VibeVoiceModelPanel({ modelId }: { modelId: string }): JSX.Element {
+  const t = useT()
+  const [status, setStatus] = useState<VibeVoiceModelStatus | null>(null)
+  const [progress, setProgress] = useState<LlmDownloadProgress | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refreshStatus = async (id: string): Promise<void> => {
+    const s = await window.api.vibevoiceStatus(id)
+    setStatus(s)
+  }
+
+  useEffect(() => {
+    setProgress(null)
+    setError(null)
+    void refreshStatus(modelId)
+  }, [modelId])
+
+  useEffect(() => {
+    const off = window.api.onVibevoiceDownloadProgress(p => {
+      if (p.modelId !== modelId) return
+      setProgress(p)
+      if (p.finished) {
+        setDownloading(false)
+        if (p.error) setError(p.error)
+        else void refreshStatus(p.modelId)
+      }
+    })
+    return off
+  }, [modelId])
+
+  const startDownload = async (): Promise<void> => {
+    setError(null)
+    setProgress(null)
+    setDownloading(true)
+    try {
+      await window.api.vibevoiceDownload(modelId)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setDownloading(false)
+    }
+  }
+
+  const preset = findVibeVoicePreset(modelId)
+  const sizeGb = preset ? (preset.approxSizeMB / 1024).toFixed(1) : '?'
+  const pct =
+    progress && progress.totalBytes
+      ? Math.min(100, Math.round((progress.downloadedBytes / progress.totalBytes) * 100))
+      : 0
+
+  return (
+    <div className="full">
+      <p className="muted small">{t('settings.vibevoice.download.intro', { size: sizeGb })}</p>
+      <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+        <span className="muted small">
+          {status?.downloaded
+            ? t('settings.vibevoice.status.downloaded')
+            : t('settings.vibevoice.status.notDownloaded')}
+        </span>
+        {status && !status.downloaded && !downloading && (
+          <button onClick={() => void startDownload()} disabled={downloading}>
+            {t('settings.vibevoice.download')}
+          </button>
+        )}
+      </div>
+
+      {downloading && (
+        <div style={{ marginTop: 8 }}>
+          <div className="job-progress">
+            <div className="bar" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="muted small" style={{ marginTop: 4 }}>
+            {progress?.totalBytes
+              ? t('settings.vibevoice.download.progress', {
+                  cur: formatBytes(progress.downloadedBytes),
+                  total: formatBytes(progress.totalBytes),
+                  pct
+                })
+              : t('settings.vibevoice.download.progress.unknown', {
+                  cur: formatBytes(progress?.downloadedBytes ?? 0)
+                })}
+          </div>
+        </div>
+      )}
+
+      {error && <div className="job-error">{error}</div>}
+    </div>
+  )
+}
 
 const LANGUAGES: { code: string; labelKey: LocaleKey }[] = [
   { code: '', labelKey: 'settings.language.auto' },
@@ -72,30 +185,77 @@ export default function SettingsPanel({
         </label>
 
         <label>
-          {t('settings.model')}
+          {t('settings.engine')}
           <select
-            value={settings.model}
-            onChange={e => onChange({ model: e.target.value })}
+            value={settings.engine}
+            onChange={e => onChange({ engine: e.target.value as TranscribeEngine })}
           >
-            {MODEL_PRESETS.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            <option value="mlx-whisper">{t('settings.engine.mlxWhisper')}</option>
+            <option value="vibevoice-asr">{t('settings.engine.vibevoice')}</option>
           </select>
         </label>
 
-        <label>
-          {t('settings.language')}
-          <select
-            value={settings.language ?? ''}
-            onChange={e => onChange({ language: e.target.value || undefined })}
-          >
-            {LANGUAGES.map(l => (
-              <option key={l.code || 'auto'} value={l.code}>
-                {t(l.labelKey)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {settings.engine === 'mlx-whisper' && (
+          <>
+            <label>
+              {t('settings.model')}
+              <select
+                value={settings.model}
+                onChange={e => onChange({ model: e.target.value })}
+              >
+                {MODEL_PRESETS.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              {t('settings.language')}
+              <select
+                value={settings.language ?? ''}
+                onChange={e => onChange({ language: e.target.value || undefined })}
+              >
+                {LANGUAGES.map(l => (
+                  <option key={l.code || 'auto'} value={l.code}>
+                    {t(l.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+
+        {settings.engine === 'vibevoice-asr' && (
+          <>
+            <label>
+              {t('settings.vibevoice.model')}
+              <select
+                value={settings.vibevoiceModel}
+                onChange={e => onChange({ vibevoiceModel: e.target.value })}
+              >
+                {VIBEVOICE_MODEL_PRESETS.map(m => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <VibeVoiceModelPanel modelId={settings.vibevoiceModel} />
+
+            <label className="checkbox full">
+              <input
+                type="checkbox"
+                checked={settings.vibevoiceSpeakerLabels}
+                onChange={e => onChange({ vibevoiceSpeakerLabels: e.target.checked })}
+              />
+              <span>
+                {t('settings.vibevoice.speakerLabels')}
+                <span className="muted small">{' '}{t('settings.vibevoice.speakerLabels.hint')}</span>
+              </span>
+            </label>
+
+            <p className="muted small full">{t('settings.vibevoice.note')}</p>
+          </>
+        )}
 
         <label>
           {t('settings.ffmpegConcurrency')}
@@ -286,6 +446,7 @@ export default function SettingsPanel({
             </div>
           </div>
 
+          {settings.engine === 'mlx-whisper' && (
           <div className="settings-section">
             <div className="settings-section-head">
               <span>{t('settings.whisper.title')}</span>
@@ -353,6 +514,7 @@ export default function SettingsPanel({
               </label>
             </div>
           </div>
+          )}
 
           <div className="settings-section">
             <div className="settings-section-head">
